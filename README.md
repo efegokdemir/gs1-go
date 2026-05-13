@@ -2,6 +2,14 @@
 
 GS1 barcode parsing for healthcare supply chain traceability.
 
+## Install
+
+```bash
+go get github.com/galenzo17/health-interop/gs1@latest
+```
+
+Standalone module — zero external dependencies, stdlib only.
+
 ## Overview
 
 Parses GS1-128 and GS1 DataMatrix barcode scanner output into typed elements. Supports all healthcare-relevant Application Identifiers (AIs) including GTIN, batch/lot, expiration date, serial number, and NHRN codes.
