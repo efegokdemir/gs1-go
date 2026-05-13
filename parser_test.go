@@ -70,6 +70,19 @@ func TestParse(t *testing.T) {
 			wantCount: 3,
 			wantAIs:   []string{"01", "17", "10"},
 		},
+		// Bare GTIN (EAN-13, EAN-8, UPC-A — no AI prefix)
+		{
+			name:      "bare EAN-13",
+			input:     "7800038041425",
+			wantCount: 1,
+			wantAIs:   []string{"01"},
+		},
+		{
+			name:      "bare UPC-A",
+			input:     "036000291452",
+			wantCount: 1,
+			wantAIs:   []string{"01"},
+		},
 		// Leading FNC1
 		{
 			name:      "leading FNC1",

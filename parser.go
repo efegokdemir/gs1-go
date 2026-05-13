@@ -101,6 +101,16 @@ func Parse(input string) (Barcode, error) {
 	data := cleanScannerInput(input)
 	data = stripBracketNotation(data)
 
+	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
+	if isBareGTIN(data) {
+		padded := padGTIN(data)
+		return Barcode{
+			Raw:      input,
+			Elements: []Element{{AI: "01", Value: padded}},
+			index:    map[string]int{"01": 0},
+		}, nil
+	}
+
 	b := Barcode{
 		Raw:      input,
 		Elements: make([]Element, 0, 8),
@@ -237,4 +247,36 @@ func stripBracketNotation(input string) string {
 		}
 	}
 	return b.String()
+}
+
+// isBareGTIN reports whether data looks like a standalone GTIN without AI
+// prefix (e.g., EAN-13 "7800038041425", EAN-8 "96385074", UPC-A, GTIN-14).
+// It returns false if the data could be parsed as AI-prefixed data.
+func isBareGTIN(data string) bool {
+	n := len(data)
+	// Only detect 12, 13, 14 digit bare GTINs. EAN-8 (8 digits) is too
+	// ambiguous with 2-digit AI codes and is rare in healthcare.
+	if n != 12 && n != 13 && n != 14 {
+		return false
+	}
+	for i := 0; i < n; i++ {
+		if data[i] < '0' || data[i] > '9' {
+			return false
+		}
+	}
+	// If the first 2 digits match a known AI, treat as AI-prefixed data.
+	if n >= 2 {
+		if _, ok := aiTable[data[0:2]]; ok {
+			return false
+		}
+	}
+	return true
+}
+
+// padGTIN left-pads a GTIN to 14 digits with zeros (GTIN-14 canonical form).
+func padGTIN(gtin string) string {
+	for len(gtin) < 14 {
+		gtin = "0" + gtin
+	}
+	return gtin
 }
