@@ -1,0 +1,21 @@
+package gs1
+
+import "errors"
+
+// ErrEmptyInput indicates that the input string is empty or contains only whitespace.
+var ErrEmptyInput = errors.New("gs1: empty input")
+
+// ErrUnknownAI indicates that the parser encountered an unrecognized Application Identifier.
+var ErrUnknownAI = errors.New("gs1: unknown application identifier")
+
+// ErrTruncatedData indicates that the input ended before a fixed-length field was fully consumed.
+var ErrTruncatedData = errors.New("gs1: truncated data")
+
+// ErrInvalidData indicates that field data violates the AI's type or length constraints.
+var ErrInvalidData = errors.New("gs1: invalid data")
+
+// ErrInvalidCheckDigit indicates that a GTIN's modulo-10 check digit does not match.
+var ErrInvalidCheckDigit = errors.New("gs1: invalid check digit")
+
+// ErrInvalidDate indicates that a YYMMDD date field contains an impossible date.
+var ErrInvalidDate = errors.New("gs1: invalid date")

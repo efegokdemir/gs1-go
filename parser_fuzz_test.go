@@ -1,0 +1,59 @@
+package gs1
+
+import "testing"
+
+func FuzzParseGS1(f *testing.F) {
+	// Valid barcodes
+	f.Add("0104150000021126172506301012345")
+	f.Add("0104150000021126172506302112345ABC\x1D10LOT42X")
+	f.Add("]d20104150000021126172506301012345")
+	f.Add("\x1D0104150000021126")
+	f.Add("10ABC123")
+	f.Add("21SERIAL1\x1D10BATCH2")
+	f.Add("3102001500")
+	f.Add("713BR12345678")
+	// Invalid inputs
+	f.Add("")
+	f.Add("abc")
+	f.Add("\x1D")
+	f.Add("9999999")
+	f.Add("01")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		b, err := Parse(input)
+		if err != nil {
+			return
+		}
+
+		// Invariants: all elements have non-empty AI and Value.
+		for i, e := range b.Elements {
+			if e.AI == "" {
+				t.Errorf("element[%d] has empty AI", i)
+			}
+			if e.Value == "" {
+				t.Errorf("element[%d] (AI %s) has empty Value", i, e.AI)
+			}
+		}
+
+		// Convenience methods must not panic.
+		_ = b.GTIN()
+		_ = b.Lot()
+		_ = b.SerialNumber()
+		_ = b.SSCC()
+		_ = b.Count()
+		_, _ = b.ExpirationDate()
+		_, _ = b.ProductionDate()
+		_, _ = b.BestBeforeDate()
+
+		// Get for each parsed AI must return the value.
+		for _, e := range b.Elements {
+			v, ok := b.Get(e.AI)
+			if !ok {
+				t.Errorf("Get(%q) returned false for parsed AI", e.AI)
+			}
+			if v == "" {
+				t.Errorf("Get(%q) returned empty string for parsed AI", e.AI)
+			}
+		}
+	})
+}
