@@ -19,3 +19,6 @@ var ErrInvalidCheckDigit = errors.New("gs1: invalid check digit")
 
 // ErrInvalidDate indicates that a YYMMDD date field contains an impossible date.
 var ErrInvalidDate = errors.New("gs1: invalid date")
+
+// ErrMissingRequiredAI indicates that a barcode is missing an AI required by a regulator.
+var ErrMissingRequiredAI = errors.New("gs1: missing required AI")

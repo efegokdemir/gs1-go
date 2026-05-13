@@ -97,3 +97,35 @@ upca, _ := gs1.ExpandUPCE("012345") // expands 6-digit UPC-E to 12-digit UPC-A
 - Bracket notation: `(01)04150000021126(17)250630(10)12345`
 - AIM prefix (DataMatrix): `]d20104150000021126172506301012345`
 - AIM prefix (GS1-128): `]C10104150000021126`
+
+## Regulatory Validation (LATAM Pharma Traceability)
+
+Validate that a barcode contains the minimum AIs required by each country's regulator:
+
+```go
+b, _ := gs1.Parse("0104150000021126172506302112345\x1D10LOT1")
+
+err := b.ValidateANVISA()   // Brazil: requires 01 + 17 + 10 + 21
+err = b.ValidateANMAT()     // Argentina: requires 01 + 17 + 10 + 21
+err = b.ValidateSNFA()      // Chile: requires 01 + 17 + 10
+err = b.ValidateCOFEPRIS()  // Mexico: requires 01 + 17 + 10
+
+// Or use the Regulator type directly
+err = gs1.ANVISA.Validate(b)
+```
+
+| Regulator | Country | Required AIs |
+|---|---|---|
+| ANVISA | Brazil | 01 (GTIN) + 17 (Expiry) + 10 (Lot) + 21 (Serial) |
+| ANMAT | Argentina | 01 (GTIN) + 17 (Expiry) + 10 (Lot) + 21 (Serial) |
+| SNFA | Chile | 01 (GTIN) + 17 (Expiry) + 10 (Lot) |
+| COFEPRIS | Mexico | 01 (GTIN) + 17 (Expiry) + 10 (Lot) |
+
+### CLI
+
+```bash
+hinterop parse gs1 "<barcode>" --validate anvisa
+hinterop parse gs1 "<barcode>" --validate anmat
+hinterop parse gs1 "<barcode>" --validate snfa
+hinterop parse gs1 "<barcode>" --validate cofepris
+```
