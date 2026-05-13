@@ -95,8 +95,21 @@ upca, _ := gs1.ExpandUPCE("012345") // expands 6-digit UPC-E to 12-digit UPC-A
 - GS1-128 scanner output: `0104150000021126172506301012345`
 - With FNC1 separators (ASCII 29): `2112345\x1D10LOT1`
 - Bracket notation: `(01)04150000021126(17)250630(10)12345`
-- AIM prefix (DataMatrix): `]d20104150000021126172506301012345`
-- AIM prefix (GS1-128): `]C10104150000021126`
+- AIM prefix (DataMatrix): `]d2...`, `]d1...` (older)
+- AIM prefix (GS1-128): `]C1...`
+- AIM prefix (QR/DotCode): `]Q3...`, `]J1...`
+
+## Scanner Resilience
+
+`Parse()` automatically handles common 2D scanner quirks:
+
+- **Trailing CR/LF** — stripped (scanners often append `\r\n`)
+- **UTF-8 BOM** — stripped (`\xEF\xBB\xBF` from some USB configs)
+- **Null bytes** — removed (USB HID scanners may inject `\x00`)
+- **CR/LF as FNC1** — converted to GS (`\x1D`) when used as field separator
+- **Consecutive FNC1** — collapsed to single separator
+
+No configuration needed — resilience is the default.
 
 ## Regulatory Validation (LATAM Pharma Traceability)
 

@@ -162,6 +162,62 @@ func TestParse(t *testing.T) {
 			wantAIs:   []string{"02", "10", "17", "37"},
 		},
 
+		// Scanner resilience
+		{
+			name:      "trailing CRLF",
+			input:     "0104150000021126172506301012345\r\n",
+			wantCount: 3,
+			wantAIs:   []string{"01", "17", "10"},
+		},
+		{
+			name:      "trailing LF",
+			input:     "0104150000021126\n",
+			wantCount: 1,
+			wantAIs:   []string{"01"},
+		},
+		{
+			name:      "BOM prefix",
+			input:     "\xEF\xBB\xBF0104150000021126",
+			wantCount: 1,
+			wantAIs:   []string{"01"},
+		},
+		{
+			name:      "CR as FNC1",
+			input:     "2112345\r10LOT1",
+			wantCount: 2,
+			wantAIs:   []string{"21", "10"},
+		},
+		{
+			name:      "null bytes stripped",
+			input:     "01041500000211261725063010\x0012345",
+			wantCount: 3,
+			wantAIs:   []string{"01", "17", "10"},
+		},
+		{
+			name:      "AIM prefix ]d1",
+			input:     "]d10104150000021126",
+			wantCount: 1,
+			wantAIs:   []string{"01"},
+		},
+		{
+			name:      "AIM prefix ]Q3",
+			input:     "]Q30104150000021126",
+			wantCount: 1,
+			wantAIs:   []string{"01"},
+		},
+		{
+			name:      "BOM + AIM + data + CRLF",
+			input:     "\xEF\xBB\xBF]d20104150000021126172506301012345\r\n",
+			wantCount: 3,
+			wantAIs:   []string{"01", "17", "10"},
+		},
+		{
+			name:      "double FNC1 between fields",
+			input:     "2112345\x1D\x1D10LOT1",
+			wantCount: 2,
+			wantAIs:   []string{"21", "10"},
+		},
+
 		// Error cases
 		{
 			name:    "empty string",

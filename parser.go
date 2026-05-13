@@ -97,8 +97,9 @@ func Parse(input string) (Barcode, error) {
 		return Barcode{}, ErrEmptyInput
 	}
 
-	// Convert bracket notation to raw AI string.
-	data := stripBracketNotation(input)
+	// Clean scanner noise, then convert bracket notation.
+	data := cleanScannerInput(input)
+	data = stripBracketNotation(data)
 
 	b := Barcode{
 		Raw:      input,
@@ -151,7 +152,9 @@ func skipPrefix(data string) int {
 	}
 	if pos < len(data) && data[pos] == ']' && pos+3 <= len(data) {
 		sym := data[pos+1]
-		if sym == 'C' || sym == 'd' || sym == 'e' {
+		// ]C1 = GS1-128, ]d1/]d2 = DataMatrix, ]e0 = GS1 composite,
+		// ]Q3 = GS1 QR, ]J1 = GS1 DotCode
+		if sym == 'C' || sym == 'd' || sym == 'e' || sym == 'Q' || sym == 'J' {
 			pos += 3
 		}
 	}
