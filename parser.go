@@ -193,8 +193,16 @@ func extractData(data string, pos int, spec aiSpec) (string, int, error) {
 	}
 	value := data[pos:end]
 	if len(value) > spec.MaxLen {
-		return "", pos, fmt.Errorf("%w: AI (%s) data length %d exceeds max %d",
-			ErrInvalidData, spec.AI, len(value), spec.MaxLen)
+		// Missing FNC1 recovery: try to find a known AI embedded in the
+		// data. Scanners sometimes omit FNC1 between variable-length
+		// fields, causing the next AI code to be read as part of the value.
+		if split, ok := findAIBoundary(data, pos+1, end); ok && split-pos <= spec.MaxLen {
+			value = data[pos:split]
+			end = split
+		} else {
+			return "", pos, fmt.Errorf("%w: AI (%s) data length %d exceeds max %d",
+				ErrInvalidData, spec.AI, len(value), spec.MaxLen)
+		}
 	}
 	if len(value) == 0 {
 		return "", pos, fmt.Errorf("%w: AI (%s) has empty data", ErrInvalidData, spec.AI)
@@ -277,6 +285,44 @@ func isBareGTIN(data string) bool {
 		}
 	}
 	return true
+}
+
+// findAIBoundary scans data[from:to] for a plausible AI boundary.
+// A candidate AI is validated: fixed-length AIs must have enough remaining
+// data of the correct type. This avoids false positives like "02" appearing
+// in lot data when the real boundary is "21" a position later.
+func findAIBoundary(data string, from, to int) (int, bool) {
+	for i := from; i < to; i++ {
+		spec, aiLen, ok := lookupAI(data, i)
+		if !ok {
+			continue
+		}
+		dataStart := i + aiLen
+		if !plausibleAIData(data, dataStart, spec) {
+			continue
+		}
+		return i, true
+	}
+	return 0, false
+}
+
+// plausibleAIData checks whether the data after a candidate AI looks valid.
+func plausibleAIData(data string, dataStart int, spec aiSpec) bool {
+	if spec.FixedLen > 0 {
+		if dataStart+spec.FixedLen > len(data) {
+			return false
+		}
+		if spec.DataType == dataNumeric {
+			for j := dataStart; j < dataStart+spec.FixedLen; j++ {
+				if data[j] < '0' || data[j] > '9' {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	// Variable-length: at least 1 char of data must follow.
+	return dataStart < len(data)
 }
 
 // padGTIN left-pads a GTIN to 14 digits with zeros (GTIN-14 canonical form).

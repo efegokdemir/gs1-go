@@ -269,6 +269,13 @@ func TestParse(t *testing.T) {
 			input:   "10AAAAABBBBBCCCCCDDDDDE",
 			wantErr: ErrInvalidData,
 		},
+		// Missing FNC1 recovery — scanner omits separator between variable-length fields.
+		{
+			name:      "missing FNC1 between lot and serial",
+			input:     "0108906025521297112310001727090010HC23I1605245021121746021",
+			wantCount: 5,
+			wantAIs:   []string{"01", "11", "17", "10", "21"},
+		},
 		{
 			name:    "only FNC1",
 			input:   "\x1D",
