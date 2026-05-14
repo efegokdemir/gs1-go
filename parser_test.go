@@ -277,6 +277,12 @@ func TestParse(t *testing.T) {
 			wantAIs:   []string{"01", "11", "17", "10", "21"},
 		},
 		{
+			name:      "missing FNC1 with AI code inside lot value",
+			input:     "0108906025521365112401001727120010HC23L2521280021122025725",
+			wantCount: 5,
+			wantAIs:   []string{"01", "11", "17", "10", "21"},
+		},
+		{
 			name:    "only FNC1",
 			input:   "\x1D",
 			wantErr: ErrEmptyInput,

@@ -196,7 +196,11 @@ func extractData(data string, pos int, spec aiSpec) (string, int, error) {
 		// Missing FNC1 recovery: try to find a known AI embedded in the
 		// data. Scanners sometimes omit FNC1 between variable-length
 		// fields, causing the next AI code to be read as part of the value.
-		if split, ok := findAIBoundary(data, pos+1, end); ok && split-pos <= spec.MaxLen {
+		searchEnd := end
+		if pos+spec.MaxLen < searchEnd {
+			searchEnd = pos + spec.MaxLen
+		}
+		if split, ok := findAIBoundary(data, pos+1, searchEnd); ok {
 			value = data[pos:split]
 			end = split
 		} else {
@@ -287,21 +291,38 @@ func isBareGTIN(data string) bool {
 	return true
 }
 
-// findAIBoundary scans data[from:to] for a plausible AI boundary.
-// A candidate AI is validated: fixed-length AIs must have enough remaining
-// data of the correct type. This avoids false positives like "02" appearing
-// in lot data when the real boundary is "21" a position later.
+// findAIBoundary scans data[from:to] for the best AI boundary when FNC1
+// separators are missing. Among all candidates where the remaining data
+// can be fully parsed, it picks the one closest to the midpoint of the
+// search range. This "balanced split" heuristic avoids false positives
+// when AI codes like "21" appear inside lot numbers (e.g., "HC23L25212800"
+// contains "21" at multiple positions).
 func findAIBoundary(data string, from, to int) (int, bool) {
+	mid := (from + to) / 2
+	bestPos := -1
+	bestDist := len(data)
 	for i := from; i < to; i++ {
 		spec, aiLen, ok := lookupAI(data, i)
 		if !ok {
 			continue
 		}
-		dataStart := i + aiLen
-		if !plausibleAIData(data, dataStart, spec) {
+		if !plausibleAIData(data, i+aiLen, spec) {
 			continue
 		}
-		return i, true
+		if !canParseFrom(data, i) {
+			continue
+		}
+		dist := i - mid
+		if dist < 0 {
+			dist = -dist
+		}
+		if bestPos < 0 || dist < bestDist || (dist == bestDist && i > bestPos) {
+			bestPos = i
+			bestDist = dist
+		}
+	}
+	if bestPos >= 0 {
+		return bestPos, true
 	}
 	return 0, false
 }
@@ -323,6 +344,49 @@ func plausibleAIData(data string, dataStart int, spec aiSpec) bool {
 	}
 	// Variable-length: at least 1 char of data must follow.
 	return dataStart < len(data)
+}
+
+// canParseFrom does a dry-run parse from pos to end-of-string to verify
+// that the remaining data contains valid AI-value pairs. No FNC1 recovery
+// is attempted in the dry run — only exact matches.
+func canParseFrom(data string, pos int) bool {
+	for pos < len(data) {
+		if data[pos] == byte(fnc1) {
+			pos++
+			continue
+		}
+		spec, aiLen, ok := lookupAI(data, pos)
+		if !ok {
+			return false
+		}
+		pos += aiLen
+		if spec.FixedLen > 0 {
+			if pos+spec.FixedLen > len(data) {
+				return false
+			}
+			if spec.DataType == dataNumeric {
+				for j := pos; j < pos+spec.FixedLen; j++ {
+					if data[j] < '0' || data[j] > '9' {
+						return false
+					}
+				}
+			}
+			pos += spec.FixedLen
+		} else {
+			end := pos
+			for end < len(data) && data[end] != byte(fnc1) {
+				end++
+			}
+			if end == pos || end-pos > spec.MaxLen {
+				return false
+			}
+			pos = end
+			if pos < len(data) && data[pos] == byte(fnc1) {
+				pos++
+			}
+		}
+	}
+	return true
 }
 
 // padGTIN left-pads a GTIN to 14 digits with zeros (GTIN-14 canonical form).
