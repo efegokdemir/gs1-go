@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GS1 Parser — WASM Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+        h1 { font-size: 1.4rem; margin-bottom: 1rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+        input, select { width: 100%; padding: 0.5rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 1rem; }
+        input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        button { padding: 0.5rem 1rem; font-size: 0.9rem; border: none; border-radius: 4px; cursor: pointer; background: #2563eb; color: #fff; margin-right: 0.5rem; margin-bottom: 1rem; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.secondary { background: #6b7280; }
+        pre { background: #f3f4f6; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; min-height: 4rem; white-space: pre-wrap; }
+        .status { font-size: 0.85rem; color: #6b7280; margin-bottom: 1rem; }
+        .error { color: #dc2626; }
+        .ok { color: #16a34a; }
+        .perf { font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1>GS1 Parser — WASM Demo</h1>
+    <p class="status" id="status">Loading WASM...</p>
+
+    <label for="barcode">Barcode input (type, paste, or scan)</label>
+    <input type="text" id="barcode" placeholder="e.g. 0104150000021126172506302112345ABC" disabled autofocus>
+
+    <label for="regulator">Regulatory validation (optional)</label>
+    <select id="regulator" disabled>
+        <option value="">None</option>
+        <option value="anvisa">ANVISA (Brazil)</option>
+        <option value="anmat">ANMAT (Argentina)</option>
+        <option value="snfa">SNFA (Chile)</option>
+        <option value="cofepris">COFEPRIS (Mexico)</option>
+    </select>
+
+    <button id="parseBtn" disabled>Parse</button>
+    <button id="validateGtinBtn" class="secondary" disabled>Validate GTIN</button>
+
+    <pre id="output">Waiting for WASM to load...</pre>
+    <p class="perf" id="perf"></p>
+
+    <script src="wasm_exec.js"></script>
+    <script>
+        const statusEl = document.getElementById('status');
+        const barcodeEl = document.getElementById('barcode');
+        const regulatorEl = document.getElementById('regulator');
+        const parseBtnEl = document.getElementById('parseBtn');
+        const validateGtinBtnEl = document.getElementById('validateGtinBtn');
+        const outputEl = document.getElementById('output');
+        const perfEl = document.getElementById('perf');
+
+        async function init() {
+            try {
+                const go = new Go();
+                let result;
+                if (typeof WebAssembly.instantiateStreaming === 'function') {
+                    result = await WebAssembly.instantiateStreaming(
+                        fetch('gs1.wasm'),
+                        go.importObject
+                    );
+                } else {
+                    const resp = await fetch('gs1.wasm');
+                    const bytes = await resp.arrayBuffer();
+                    result = await WebAssembly.instantiate(bytes, go.importObject);
+                }
+                go.run(result.instance);
+
+                statusEl.textContent = 'WASM loaded — ready';
+                statusEl.className = 'status ok';
+                barcodeEl.disabled = false;
+                regulatorEl.disabled = false;
+                parseBtnEl.disabled = false;
+                validateGtinBtnEl.disabled = false;
+                outputEl.textContent = 'Enter a barcode and click Parse.';
+                barcodeEl.focus();
+            } catch (err) {
+                statusEl.textContent = 'Failed to load WASM: ' + err.message;
+                statusEl.className = 'status error';
+                outputEl.textContent = err.stack || err.message;
+            }
+        }
+
+        function doParse() {
+            const input = barcodeEl.value.trim();
+            if (!input) return;
+
+            const t0 = performance.now();
+            const result = gs1.parse(input);
+            const elapsed = (performance.now() - t0).toFixed(3);
+
+            if (result.error) {
+                outputEl.textContent = 'Parse error: ' + result.error;
+                outputEl.className = 'error';
+            } else {
+                let lines = JSON.stringify(result, null, 2);
+
+                const reg = regulatorEl.value;
+                if (reg) {
+                    const valResult = gs1.validateRegulatory(input, reg);
+                    if (valResult === null) {
+                        lines += '\n\nRegulatory (' + reg.toUpperCase() + '): COMPLIANT';
+                    } else {
+                        lines += '\n\nRegulatory (' + reg.toUpperCase() + '): ' + valResult;
+                    }
+                }
+
+                outputEl.textContent = lines;
+                outputEl.className = '';
+            }
+
+            perfEl.textContent = 'Parse time: ' + elapsed + ' ms';
+        }
+
+        function doValidateGTIN() {
+            const input = barcodeEl.value.trim();
+            if (!input) return;
+
+            const valid = gs1.validateGTIN(input);
+            outputEl.textContent = 'GTIN "' + input + '": ' + (valid ? 'VALID' : 'INVALID');
+            outputEl.className = valid ? 'ok' : 'error';
+            perfEl.textContent = '';
+        }
+
+        parseBtnEl.addEventListener('click', doParse);
+        validateGtinBtnEl.addEventListener('click', doValidateGTIN);
+
+        // Parse on Enter key
+        barcodeEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doParse();
+        });
+
+        init();
+    </script>
+</body>
+</html>

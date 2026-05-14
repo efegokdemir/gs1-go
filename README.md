@@ -43,6 +43,29 @@ for _, e := range b.Elements {
 }
 ```
 
+## Zero-Allocation Parsing
+
+For high-throughput scenarios (continuous scanner loops, batch processing), use `ParseInto` to reuse a `Barcode` across calls — zero allocations on the hot path:
+
+```go
+var b gs1.Barcode
+for scanner.Scan() {
+    b.Reset()
+    if err := gs1.ParseInto(scanner.Text(), &b); err != nil {
+        log.Println(err)
+        continue
+    }
+    fmt.Println(b.GTIN(), b.Lot())
+}
+```
+
+| API | Allocs/op | Throughput (single-core) |
+|-----|-----------|------------------------|
+| `Parse()` | 1 | ~3.9M/sec |
+| `ParseInto()` | 0 | ~5.9M/sec |
+
+Each goroutine must use its own `Barcode` — there is no shared mutable state.
+
 ## GTIN Validation
 
 GTIN check digit validation is separate from parsing (separation of concerns):
@@ -150,3 +173,65 @@ hinterop parse gs1 "<barcode>" --validate anmat
 hinterop parse gs1 "<barcode>" --validate snfa
 hinterop parse gs1 "<barcode>" --validate cofepris
 ```
+
+## WebAssembly (Browser / Edge)
+
+The parser compiles to WASM for use in browsers, Electron apps, and edge workers.
+
+### Build
+
+```bash
+cd gs1
+bash wasm/build.sh
+```
+
+Produces `wasm/gs1.wasm` (~3 MB) and copies `wasm_exec.js` from the Go SDK.
+
+### JavaScript API
+
+```html
+<script src="wasm_exec.js"></script>
+<script src="gs1-loader.js" type="module"></script>
+<script type="module">
+  import { loadGS1 } from './gs1-loader.js';
+  const gs1 = await loadGS1('gs1.wasm');
+
+  // Parse a barcode
+  const result = gs1.parse("0104150000021126172506301012345");
+  console.log(result.gtin);     // "04150000021126"
+  console.log(result.elements); // [{ai: "01", value: "04150000021126"}, ...]
+
+  // Validate GTIN check digit
+  gs1.validateGTIN("04150000021126"); // true
+
+  // Regulatory validation
+  const err = gs1.validateRegulatory(barcode, "anvisa");
+  // null = compliant, string = error message
+</script>
+```
+
+TypeScript declarations: [`wasm/gs1.d.ts`](wasm/gs1.d.ts)
+
+### Browser Support
+
+| Browser | Minimum | Status |
+|---------|---------|--------|
+| Chrome | 57+ | Supported |
+| Firefox | 52+ | Supported |
+| Safari | 11+ | Supported |
+| Edge | 79+ (Chromium) | Supported |
+| IE 11 | N/A | Not supported |
+
+### Testing in Browser
+
+```bash
+cd gs1
+bash wasm/build.sh
+python3 -m http.server 8080 --directory wasm/example/
+# Open http://localhost:8080 in Chrome/Firefox/Safari
+```
+
+Open the DevTools console and verify:
+- `gs1.parse("0104150000021126172506301012345")` returns a valid object
+- `gs1.validateGTIN("04150000021126")` returns `true`
+- Parse latency < 1ms (shown in the demo UI)

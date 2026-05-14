@@ -362,6 +362,125 @@ func TestParseConvenienceMethodsMissing(t *testing.T) {
 	}
 }
 
+func TestBarcodeReset(t *testing.T) {
+	b, err := Parse("0104150000021126172506302112345ABC\x1D10LOT42X")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(b.Elements) != 4 {
+		t.Fatalf("got %d elements, want 4", len(b.Elements))
+	}
+	origCap := cap(b.Elements)
+
+	b.Reset()
+
+	if b.Raw != "" {
+		t.Errorf("Raw = %q after Reset, want empty", b.Raw)
+	}
+	if len(b.Elements) != 0 {
+		t.Errorf("len(Elements) = %d after Reset, want 0", len(b.Elements))
+	}
+	if cap(b.Elements) != origCap {
+		t.Errorf("cap(Elements) = %d after Reset, want %d (retained)", cap(b.Elements), origCap)
+	}
+}
+
+func TestParseInto(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"full barcode", "0104150000021126172506302112345ABC\x1D10LOT42X"},
+		{"GTIN only", "0104150000021126"},
+		{"lot only", "10ABC123"},
+		{"bracket notation", "(01)04150000021126(17)250630(10)LOT42"},
+		{"bare EAN-13", "7800038041425"},
+		{"AIM prefix", "]C10104150000021126"},
+		{"FNC1 prefix", "\x1D0104150000021126"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			want, err := Parse(tt.input)
+			if err != nil {
+				t.Fatalf("Parse() error = %v", err)
+			}
+
+			var got Barcode
+			if err := ParseInto(tt.input, &got); err != nil {
+				t.Fatalf("ParseInto() error = %v", err)
+			}
+
+			if got.Raw != want.Raw {
+				t.Errorf("Raw = %q, want %q", got.Raw, want.Raw)
+			}
+			if len(got.Elements) != len(want.Elements) {
+				t.Fatalf("len(Elements) = %d, want %d", len(got.Elements), len(want.Elements))
+			}
+			for i := range want.Elements {
+				if got.Elements[i] != want.Elements[i] {
+					t.Errorf("Elements[%d] = %+v, want %+v", i, got.Elements[i], want.Elements[i])
+				}
+			}
+		})
+	}
+}
+
+func TestParseIntoReuse(t *testing.T) {
+	inputs := []string{
+		"0104150000021126172506302112345ABC\x1D10LOT42X",
+		"0104150000021126",
+		"10BATCH42",
+		"(01)04150000021126(17)250630",
+		"7800038041425",
+	}
+
+	var b Barcode
+	for _, input := range inputs {
+		b.Reset()
+		if err := ParseInto(input, &b); err != nil {
+			t.Fatalf("ParseInto(%q) error: %v", input, err)
+		}
+
+		want, err := Parse(input)
+		if err != nil {
+			t.Fatalf("Parse(%q) error: %v", input, err)
+		}
+
+		if len(b.Elements) != len(want.Elements) {
+			t.Fatalf("input %q: len(Elements) = %d, want %d", input, len(b.Elements), len(want.Elements))
+		}
+		for i := range want.Elements {
+			if b.Elements[i] != want.Elements[i] {
+				t.Errorf("input %q: Elements[%d] = %+v, want %+v", input, i, b.Elements[i], want.Elements[i])
+			}
+		}
+	}
+}
+
+func TestParseIntoErrors(t *testing.T) {
+	var b Barcode
+	tests := []struct {
+		name    string
+		input   string
+		wantErr error
+	}{
+		{"empty", "", ErrEmptyInput},
+		{"whitespace", "   ", ErrEmptyInput},
+		{"unknown AI", "XX12345", ErrUnknownAI},
+		{"truncated", "01041500", ErrTruncatedData},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b.Reset()
+			err := ParseInto(tt.input, &b)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("ParseInto() error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func BenchmarkParse(b *testing.B) {
 	input := "0104150000021126172506302112345ABC\x1D10LOT42X"
 	for i := 0; i < b.N; i++ {
@@ -373,4 +492,35 @@ func BenchmarkParseMinimal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = Parse("0104150000021126")
 	}
+}
+
+func BenchmarkParseInto(b *testing.B) {
+	input := "0104150000021126172506302112345ABC\x1D10LOT42X"
+	var bc Barcode
+	for i := 0; i < b.N; i++ {
+		bc.Reset()
+		_ = ParseInto(input, &bc)
+	}
+}
+
+func BenchmarkParseSustained(b *testing.B) {
+	input := "0104150000021126172506302112345ABC\x1D10LOT42X"
+	var bc Barcode
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000; j++ {
+			bc.Reset()
+			_ = ParseInto(input, &bc)
+		}
+	}
+}
+
+func BenchmarkParseConcurrent(b *testing.B) {
+	input := "0104150000021126172506302112345ABC\x1D10LOT42X"
+	b.RunParallel(func(pb *testing.PB) {
+		var bc Barcode
+		for pb.Next() {
+			bc.Reset()
+			_ = ParseInto(input, &bc)
+		}
+	})
 }

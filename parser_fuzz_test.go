@@ -19,9 +19,17 @@ func FuzzParseGS1(f *testing.F) {
 	f.Add("9999999")
 	f.Add("01")
 
+	var reused Barcode
+
 	f.Fuzz(func(t *testing.T, input string) {
 		b, err := Parse(input)
 		if err != nil {
+			// ParseInto must return the same error class.
+			reused.Reset()
+			err2 := ParseInto(input, &reused)
+			if err2 == nil {
+				t.Errorf("Parse returned error but ParseInto did not: %v", err)
+			}
 			return
 		}
 
@@ -53,6 +61,20 @@ func FuzzParseGS1(f *testing.F) {
 			}
 			if v == "" {
 				t.Errorf("Get(%q) returned empty string for parsed AI", e.AI)
+			}
+		}
+
+		// Cross-validate ParseInto produces identical results.
+		reused.Reset()
+		if err := ParseInto(input, &reused); err != nil {
+			t.Fatalf("ParseInto failed where Parse succeeded: %v", err)
+		}
+		if len(reused.Elements) != len(b.Elements) {
+			t.Fatalf("ParseInto elements count %d != Parse %d", len(reused.Elements), len(b.Elements))
+		}
+		for i := range b.Elements {
+			if reused.Elements[i] != b.Elements[i] {
+				t.Errorf("ParseInto element[%d] = %+v, Parse = %+v", i, reused.Elements[i], b.Elements[i])
 			}
 		}
 	})

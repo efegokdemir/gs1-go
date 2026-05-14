@@ -18,7 +18,6 @@ type Element struct {
 type Barcode struct {
 	Raw      string    // original input string
 	Elements []Element // parsed AI-value pairs in scan order
-	index    map[string]int
 }
 
 // GTIN returns the GTIN value (AI 01), or "" if not present.
@@ -81,11 +80,18 @@ func (b Barcode) BestBeforeDate() (time.Time, error) {
 // Get returns the value for the given AI code and whether it was found.
 // If the AI appears multiple times, the first occurrence is returned.
 func (b Barcode) Get(ai string) (string, bool) {
-	idx, ok := b.index[ai]
-	if !ok {
-		return "", false
+	for i := range b.Elements {
+		if b.Elements[i].AI == ai {
+			return b.Elements[i].Value, true
+		}
 	}
-	return b.Elements[idx].Value, true
+	return "", false
+}
+
+// Reset clears a Barcode for reuse, retaining allocated memory.
+func (b *Barcode) Reset() {
+	b.Raw = ""
+	b.Elements = b.Elements[:0]
 }
 
 // Parse parses a GS1 barcode string (GS1-128 or DataMatrix scanner output)
@@ -93,28 +99,31 @@ func (b Barcode) Get(ai string) (string, bool) {
 // (e.g., ]C1, ]d2), FNC1 separators (ASCII 29), and bracket notation
 // (e.g., "(01)04150000021126(17)250630").
 func Parse(input string) (Barcode, error) {
+	b := Barcode{Elements: make([]Element, 0, 8)}
+	if err := ParseInto(input, &b); err != nil {
+		return Barcode{}, err
+	}
+	return b, nil
+}
+
+// ParseInto parses a GS1 barcode string into an existing Barcode, reusing
+// its allocated memory. Call b.Reset() before reuse to clear previous data.
+// Each goroutine must use its own Barcode.
+func ParseInto(input string, b *Barcode) error {
 	if strings.TrimSpace(input) == "" {
-		return Barcode{}, ErrEmptyInput
+		return ErrEmptyInput
 	}
 
-	// Clean scanner noise, then convert bracket notation.
 	data := cleanScannerInput(input)
 	data = stripBracketNotation(data)
+
+	b.Raw = input
 
 	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
 	if isBareGTIN(data) {
 		padded := padGTIN(data)
-		return Barcode{
-			Raw:      input,
-			Elements: []Element{{AI: "01", Value: padded}},
-			index:    map[string]int{"01": 0},
-		}, nil
-	}
-
-	b := Barcode{
-		Raw:      input,
-		Elements: make([]Element, 0, 8),
-		index:    make(map[string]int, 8),
+		b.Elements = append(b.Elements, Element{AI: "01", Value: padded})
+		return nil
 	}
 
 	pos := skipPrefix(data)
@@ -127,31 +136,28 @@ func Parse(input string) (Barcode, error) {
 
 		spec, aiLen, ok := lookupAI(data, pos)
 		if !ok {
-			return Barcode{}, fmt.Errorf("%w: at position %d", ErrUnknownAI, pos)
+			return fmt.Errorf("%w: at position %d", ErrUnknownAI, pos)
 		}
 		pos += aiLen
 
 		value, newPos, err := extractData(data, pos, spec)
 		if err != nil {
-			return Barcode{}, err
+			return err
 		}
 		pos = newPos
 
 		if err := validateData(value, spec); err != nil {
-			return Barcode{}, err
+			return err
 		}
 
 		b.Elements = append(b.Elements, Element{AI: spec.AI, Value: value})
-		if _, exists := b.index[spec.AI]; !exists {
-			b.index[spec.AI] = len(b.Elements) - 1
-		}
 	}
 
 	if len(b.Elements) == 0 {
-		return Barcode{}, ErrEmptyInput
+		return ErrEmptyInput
 	}
 
-	return b, nil
+	return nil
 }
 
 // skipPrefix skips leading FNC1 and AIM symbology identifiers.

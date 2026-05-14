@@ -9,13 +9,9 @@ import (
 func testBarcode(ais ...string) Barcode {
 	b := Barcode{
 		Elements: make([]Element, len(ais)),
-		index:    make(map[string]int, len(ais)),
 	}
 	for i, ai := range ais {
 		b.Elements[i] = Element{AI: ai, Value: "test"}
-		if _, exists := b.index[ai]; !exists {
-			b.index[ai] = i
-		}
 	}
 	return b
 }
