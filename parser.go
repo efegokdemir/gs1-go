@@ -361,15 +361,8 @@ func canParseFrom(data string, pos int) bool {
 		}
 		pos += aiLen
 		if spec.FixedLen > 0 {
-			if pos+spec.FixedLen > len(data) {
+			if !validFixedField(data, pos, spec) {
 				return false
-			}
-			if spec.DataType == dataNumeric {
-				for j := pos; j < pos+spec.FixedLen; j++ {
-					if data[j] < '0' || data[j] > '9' {
-						return false
-					}
-				}
 			}
 			pos += spec.FixedLen
 		} else {
@@ -383,6 +376,20 @@ func canParseFrom(data string, pos int) bool {
 			pos = end
 			if pos < len(data) && data[pos] == byte(fnc1) {
 				pos++
+			}
+		}
+	}
+	return true
+}
+
+func validFixedField(data string, pos int, spec aiSpec) bool {
+	if pos+spec.FixedLen > len(data) {
+		return false
+	}
+	if spec.DataType == dataNumeric {
+		for j := pos; j < pos+spec.FixedLen; j++ {
+			if data[j] < '0' || data[j] > '9' {
+				return false
 			}
 		}
 	}
