@@ -11,11 +11,33 @@ export interface GS1ParseResult {
   gtin: string;
   lot: string;
   serial: string;
+  /** Expiration date (AI 17). Raw YYMMDD or ISO 8601 depending on dateFormat. */
+  expirationDate?: string;
+  /** Production date (AI 11). Raw YYMMDD or ISO 8601 depending on dateFormat. */
+  productionDate?: string;
+  /** Best-before date (AI 15). Raw YYMMDD or ISO 8601 depending on dateFormat. */
+  bestBeforeDate?: string;
 }
 
 /** Error object returned when parsing fails. */
 export interface GS1ParseError {
   error: string;
+}
+
+/** Options for gs1.parse(). */
+export interface GS1ParseOptions {
+  /**
+   * Date output format.
+   * - "raw" (default): YYMMDD string as-is from the barcode
+   * - "iso": ISO 8601 date string (YYYY-MM-DD)
+   */
+  dateFormat?: "raw" | "iso";
+  /**
+   * How to resolve day=00 in GS1 dates.
+   * - "last" (default): last day of the month (GS1 standard)
+   * - "first": first day of the month
+   */
+  dayZero?: "last" | "first";
 }
 
 declare global {
@@ -24,7 +46,10 @@ declare global {
      * Parse a GS1 barcode string (GS1-128, DataMatrix, bracket notation).
      * Returns a parsed result object, or an object with an `error` field.
      */
-    function parse(input: string): GS1ParseResult | GS1ParseError;
+    function parse(
+      input: string,
+      options?: GS1ParseOptions
+    ): GS1ParseResult | GS1ParseError;
 
     /**
      * Validate a GTIN check digit.

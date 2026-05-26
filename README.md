@@ -89,6 +89,28 @@ t, _ := gs1.ParseDate("250630") // 2025-06-30
 t, _ = gs1.ParseDate("250200")  // 2025-02-28 (last day of Feb)
 ```
 
+### Configurable Day-Zero Policy
+
+By default, day `00` resolves to the **last** day of the month (GS1 standard). Use `ParseDateWithOptions` to change this:
+
+```go
+// First day of month (useful for some LATAM regulatory systems)
+opts := gs1.DateOptions{DayZero: gs1.DayZeroFirstDay}
+t, _ := gs1.ParseDateWithOptions("250200", opts) // 2025-02-01
+
+// Last day of month (default, same as ParseDate)
+opts = gs1.DateOptions{DayZero: gs1.DayZeroLastDay}
+t, _ = gs1.ParseDateWithOptions("250200", opts) // 2025-02-28
+```
+
+### Raw Date Strings
+
+If you need the raw YYMMDD value without converting to `time.Time`:
+
+```go
+raw, _ := gs1.ParseDateRaw("250630") // "250630" (validated, returned as-is)
+```
+
 ## Supported Application Identifiers
 
 | AI | Name | Type |
@@ -196,10 +218,18 @@ Produces `wasm/gs1.wasm` (~3 MB) and copies `wasm_exec.js` from the Go SDK.
   import { loadGS1 } from './gs1-loader.js';
   const gs1 = await loadGS1('gs1.wasm');
 
-  // Parse a barcode
+  // Parse a barcode (dates returned as raw YYMMDD by default)
   const result = gs1.parse("0104150000021126172506301012345");
-  console.log(result.gtin);     // "04150000021126"
-  console.log(result.elements); // [{ai: "01", value: "04150000021126"}, ...]
+  console.log(result.gtin);           // "04150000021126"
+  console.log(result.expirationDate); // "250630"
+  console.log(result.elements);       // [{ai: "01", value: "04150000021126"}, ...]
+
+  // Parse with ISO dates and first-day-of-month for day 00
+  const r2 = gs1.parse("0104150000021126172502001012345", {
+    dateFormat: "iso",
+    dayZero: "first"
+  });
+  console.log(r2.expirationDate); // "2025-02-01"
 
   // Validate GTIN check digit
   gs1.validateGTIN("04150000021126"); // true

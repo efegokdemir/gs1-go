@@ -15,11 +15,21 @@ type elementJSON struct {
 }
 
 type parseResultJSON struct {
-	Raw      string        `json:"raw"`
-	Elements []elementJSON `json:"elements"`
-	GTIN     string        `json:"gtin"`
-	Lot      string        `json:"lot"`
-	Serial   string        `json:"serial"`
+	Raw            string        `json:"raw"`
+	Elements       []elementJSON `json:"elements"`
+	GTIN           string        `json:"gtin"`
+	Lot            string        `json:"lot"`
+	Serial         string        `json:"serial"`
+	ExpirationDate string        `json:"expirationDate,omitempty"`
+	ProductionDate string        `json:"productionDate,omitempty"`
+	BestBeforeDate string        `json:"bestBeforeDate,omitempty"`
+}
+
+// dateAIs are the AI codes that contain YYMMDD dates.
+var dateAIs = map[string]string{
+	"17": "expirationDate",
+	"11": "productionDate",
+	"15": "bestBeforeDate",
 }
 
 func parse(_ js.Value, args []js.Value) any {
@@ -27,6 +37,21 @@ func parse(_ js.Value, args []js.Value) any {
 		return errorResult("parse requires 1 argument")
 	}
 	input := args[0].String()
+
+	// Parse options from second argument: { dateFormat?: "raw"|"iso", dayZero?: "last"|"first" }
+	dateFormat := "raw"
+	dayZero := gs1.DayZeroLastDay
+	if len(args) >= 2 && args[1].Type() == js.TypeObject {
+		opts := args[1]
+		if df := opts.Get("dateFormat"); df.Type() == js.TypeString {
+			dateFormat = df.String()
+		}
+		if dz := opts.Get("dayZero"); dz.Type() == js.TypeString {
+			if dz.String() == "first" {
+				dayZero = gs1.DayZeroFirstDay
+			}
+		}
+	}
 
 	b, err := gs1.Parse(input)
 	if err != nil {
@@ -42,6 +67,32 @@ func parse(_ js.Value, args []js.Value) any {
 	}
 	for i, e := range b.Elements {
 		result.Elements[i] = elementJSON{AI: e.AI, Value: e.Value}
+	}
+
+	// Resolve date fields based on options.
+	dateOpts := gs1.DateOptions{DayZero: dayZero}
+	for ai, field := range dateAIs {
+		v, ok := b.Get(ai)
+		if !ok {
+			continue
+		}
+		var dateStr string
+		if dateFormat == "iso" {
+			t, err := gs1.ParseDateWithOptions(v, dateOpts)
+			if err == nil {
+				dateStr = t.Format("2006-01-02")
+			}
+		} else {
+			dateStr = v
+		}
+		switch field {
+		case "expirationDate":
+			result.ExpirationDate = dateStr
+		case "productionDate":
+			result.ProductionDate = dateStr
+		case "bestBeforeDate":
+			result.BestBeforeDate = dateStr
+		}
 	}
 
 	data, err := json.Marshal(result)
