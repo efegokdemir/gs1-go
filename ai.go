@@ -105,11 +105,11 @@ var aiTable = map[string]aiSpec{
 	"714": {AI: "714", Name: "NHRN Portugal", FixedLen: 0, MaxLen: 20, DataType: dataAlphanumeric},
 }
 
-// lookupAI finds the AI spec at the given position in the input string.
+// lookupAIAt finds the AI spec at the given position in the input string.
 // It tries 2-digit, then 3-digit, then 4-digit keys. Returns the spec
 // and the number of characters consumed for the AI code, or false if
 // no match was found.
-func lookupAI(input string, pos int) (aiSpec, int, bool) {
+func lookupAIAt(input string, pos int) (aiSpec, int, bool) {
 	remaining := len(input) - pos
 
 	if remaining >= 2 {
@@ -129,4 +129,51 @@ func lookupAI(input string, pos int) (aiSpec, int, bool) {
 	}
 
 	return aiSpec{}, 0, false
+}
+
+// AI describes a GS1 Application Identifier as listed in the GS1 General
+// Specifications. Format uses GS1 Syntax Dictionary notation: "N14" is
+// exactly 14 digits, "X..20" is up to 20 characters of any type.
+type AI struct {
+	Code   string // AI code, e.g. "01", "10", "3102"
+	Name   string // data title, e.g. "GTIN", "Batch/Lot"
+	Format string // format specifier, e.g. "N14", "X..20"
+}
+
+// LookupAI returns the specification for an Application Identifier code
+// such as "01" or "3102". The boolean is false for codes this package does
+// not recognize.
+func LookupAI(code string) (AI, bool) {
+	spec, ok := aiTable[code]
+	if !ok {
+		return AI{}, false
+	}
+	return AI{Code: spec.AI, Name: spec.Name, Format: spec.format()}, true
+}
+
+// format renders the spec in GS1 Syntax Dictionary notation.
+func (s aiSpec) format() string {
+	prefix := "N"
+	if s.DataType == dataAlphanumeric {
+		prefix = "X"
+	}
+	if s.FixedLen > 0 {
+		return prefix + itoa(s.FixedLen)
+	}
+	return prefix + ".." + itoa(s.MaxLen)
+}
+
+// itoa converts a small non-negative int to decimal without importing strconv.
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var buf [4]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(buf[i:])
 }

@@ -1,267 +1,283 @@
-# gs1
+# gs1-go
 
-GS1 barcode parsing for healthcare supply chain traceability.
+[![CI](https://github.com/galenzo17/gs1-go/actions/workflows/ci.yml/badge.svg)](https://github.com/galenzo17/gs1-go/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/galenzo17/gs1-go.svg)](https://pkg.go.dev/github.com/galenzo17/gs1-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/galenzo17/gs1-go)](https://goreportcard.com/report/github.com/galenzo17/gs1-go)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Install
+A dependency-free Go library for parsing and validating **GS1 Application
+Identifier element strings**: the data carried by GS1-128, GS1 DataMatrix,
+GS1 QR Code and GS1 DataBar symbols.
 
-```bash
-go get github.com/galenzo17/health-interop/gs1@latest
+It is built for the data-capture edge, where scanner output is noisy and
+throughput matters: hospital dispensing, pharmacy point of sale, warehouse
+receiving, and pharmaceutical serialization systems.
+
+```go
+import "github.com/galenzo17/gs1-go"
+
+b, err := gs1.Parse("]d20104150000021126172506302112345ABC\x1D10LOT42X")
+if err != nil {
+    return err
+}
+b.GTIN()          // "04150000021126"
+b.Lot()           // "LOT42X"
+b.SerialNumber()  // "12345ABC"
+b.ExpirationDate() // 2025-06-30 00:00:00 +0000 UTC
 ```
 
-Standalone module — zero external dependencies, stdlib only.
+## Features
 
-## Overview
+- **Element string parsing** for fixed- and variable-length AIs with FNC1
+  (ASCII 29) separators, bracket notation `(01)…(17)…`, AIM symbology
+  identifiers (`]C1`, `]d2`, `]Q3`, `]e0`, `]J1`) and bare EAN-13 / UPC-A / GTIN-14.
+- **Scanner resilience by default.** UTF-8 BOM, CR/LF, NUL bytes and
+  duplicated FNC1 from keyboard-wedge and USB HID scanners are normalized
+  before parsing. See [ADR 0003](docs/adr/0003-scanner-resilience.md).
+- **Missing-FNC1 recovery.** When a scanner drops the separator between two
+  variable-length fields, a balanced-split heuristic restores the boundary
+  instead of failing.
+- **Zero-allocation hot path.** `ParseInto` reuses a caller-owned `Barcode`;
+  values are substrings of the input. See [ADR 0004](docs/adr/0004-zero-allocation-parsing.md).
+- **GTIN check digits** (GTIN-8/12/13/14), UPC-E expansion, YYMMDD date
+  parsing with a configurable day-zero policy.
+- **Regulatory profiles** for LATAM pharmaceutical traceability: ANVISA,
+  ANMAT, SNFA, COFEPRIS.
+- **WebAssembly build** with a JavaScript loader and TypeScript declarations.
+- **CLI** for scripts and scanner loops, also dependency-free.
+- **Fuzzed continuously** in CI and nightly.
 
-Parses GS1-128 and GS1 DataMatrix barcode scanner output into typed elements. Supports all healthcare-relevant Application Identifiers (AIs) including GTIN, batch/lot, expiration date, serial number, and NHRN codes.
+## Installation
+
+```bash
+go get github.com/galenzo17/gs1-go@latest
+```
+
+Requires Go 1.23 or later. The module has no dependencies outside the
+standard library.
+
+CLI:
+
+```bash
+go install github.com/galenzo17/gs1-go/cmd/gs1@latest
+```
 
 ## Usage
 
-```go
-import "github.com/galenzo17/health-interop/gs1"
+### Parse
 
-// Parse a barcode string
-b, err := gs1.Parse("0104150000021126172506302112345ABC\x1D10LOT42X")
+`Parse` accepts whatever the scanner sends. The returned `Barcode` keeps the
+elements in scan order and offers typed accessors for the common healthcare AIs.
+
+```go
+b, err := gs1.Parse("(01)04150000021126(17)250630(10)ABC123")
 if err != nil {
     log.Fatal(err)
 }
 
-// Convenience methods
-fmt.Println(b.GTIN())         // 04150000021126
-fmt.Println(b.Lot())          // LOT42X
-fmt.Println(b.SerialNumber()) // 12345ABC
-
-expiry, _ := b.ExpirationDate()
-fmt.Println(expiry) // 2025-06-30
-
-// Generic lookup
-v, ok := b.Get("17")
-fmt.Println(v, ok) // 250630 true
-
-// Iterate all elements
 for _, e := range b.Elements {
-    fmt.Printf("AI(%s) = %s\n", e.AI, e.Value)
+    ai, _ := gs1.LookupAI(e.AI)
+    fmt.Printf("(%s) %-16s %s\n", e.AI, ai.Name, e.Value)
 }
+// (01) GTIN             04150000021126
+// (17) Expiration Date  250630
+// (10) Batch/Lot        ABC123
+
+v, ok := b.Get("17") // generic lookup, first occurrence
 ```
 
-## Zero-Allocation Parsing
+Errors wrap sentinel values so callers can branch with `errors.Is`:
 
-For high-throughput scenarios (continuous scanner loops, batch processing), use `ParseInto` to reuse a `Barcode` across calls — zero allocations on the hot path:
+| Sentinel | Meaning |
+|---|---|
+| `ErrEmptyInput` | Input is empty or whitespace |
+| `ErrUnknownAI` | Unrecognized Application Identifier at a position |
+| `ErrTruncatedData` | Fixed-length field cut short |
+| `ErrInvalidData` | Data violates the AI's type or length |
+| `ErrInvalidCheckDigit` | GTIN modulo-10 check failed |
+| `ErrInvalidDate` | YYMMDD field is not a calendar date |
+| `ErrMissingRequiredAI` | A regulator-mandated AI is absent |
+
+### Zero-allocation loop
+
+For continuous scanning or batch pipelines, reuse a `Barcode`. Each goroutine
+must own its instance; there is no shared state.
 
 ```go
 var b gs1.Barcode
-for scanner.Scan() {
+for sc.Scan() {
     b.Reset()
-    if err := gs1.ParseInto(scanner.Text(), &b); err != nil {
+    if err := gs1.ParseInto(sc.Text(), &b); err != nil {
         log.Println(err)
         continue
     }
-    fmt.Println(b.GTIN(), b.Lot())
+    process(b.GTIN(), b.Lot(), b.SerialNumber())
 }
 ```
 
-| API | Allocs/op | Throughput (single-core) |
-|-----|-----------|------------------------|
-| `Parse()` | 1 | ~3.9M/sec |
-| `ParseInto()` | 0 | ~5.9M/sec |
-
-Each goroutine must use its own `Barcode` — there is no shared mutable state.
-
-## GTIN Validation
-
-GTIN check digit validation is separate from parsing (separation of concerns):
-
-```go
-err := gs1.ValidateGTIN("04150000021126")
-
-// Compute a check digit
-check, _ := gs1.ComputeGTINCheckDigit("0415000002112")
-fmt.Println(string(check)) // 6
-```
-
-Supports GTIN-8, GTIN-12, GTIN-13, and GTIN-14.
-
-## Date Parsing
-
-GS1 dates use YYMMDD format (years 2000-2099). Day 00 means last day of month:
-
-```go
-t, _ := gs1.ParseDate("250630") // 2025-06-30
-t, _ = gs1.ParseDate("250200")  // 2025-02-28 (last day of Feb)
-```
-
-### Configurable Day-Zero Policy
-
-By default, day `00` resolves to the **last** day of the month (GS1 standard). Use `ParseDateWithOptions` to change this:
-
-```go
-// First day of month (useful for some LATAM regulatory systems)
-opts := gs1.DateOptions{DayZero: gs1.DayZeroFirstDay}
-t, _ := gs1.ParseDateWithOptions("250200", opts) // 2025-02-01
-
-// Last day of month (default, same as ParseDate)
-opts = gs1.DateOptions{DayZero: gs1.DayZeroLastDay}
-t, _ = gs1.ParseDateWithOptions("250200", opts) // 2025-02-28
-```
-
-### Raw Date Strings
-
-If you need the raw YYMMDD value without converting to `time.Time`:
-
-```go
-raw, _ := gs1.ParseDateRaw("250630") // "250630" (validated, returned as-is)
-```
-
-## Supported Application Identifiers
-
-| AI | Name | Type |
+| API | Allocs/op | Throughput, single core |
 |---|---|---|
-| 00 | SSCC | Fixed 18N |
-| 01 | GTIN | Fixed 14N |
-| 02 | Content GTIN | Fixed 14N |
-| 10 | Batch/Lot | Variable ..20X |
-| 11 | Production Date | Fixed 6N |
-| 13 | Packaging Date | Fixed 6N |
-| 15 | Best Before Date | Fixed 6N |
-| 17 | Expiration Date | Fixed 6N |
-| 21 | Serial Number | Variable ..20X |
-| 30 | Count | Variable ..8N |
-| 37 | Count of Trade Items | Variable ..8N |
-| 240 | Additional Product ID | Variable ..30X |
-| 241 | Customer Part Number | Variable ..30X |
-| 310n | Net Weight kg | Fixed 6N |
-| 320n | Net Weight lb | Fixed 6N |
-| 330n | Gross Weight kg | Fixed 6N |
-| 340n | Gross Weight lb | Fixed 6N |
-| 402 | GSIN | Fixed 17N |
-| 414 | GLN | Fixed 13N |
-| 710-714 | NHRN | Variable ..20X |
-| 90-99 | Internal/Custom | Variable ..30-90X |
+| `Parse` | 1 | ~3.9M/s |
+| `ParseInto` | 0 | ~5.9M/s |
 
-## UPC-E Expansion
+Run `make bench` to reproduce on your hardware.
+
+### GTIN validation
+
+Parsing checks structure only. Validate check digits explicitly:
 
 ```go
-upca, _ := gs1.ExpandUPCE("012345") // expands 6-digit UPC-E to 12-digit UPC-A
+err := gs1.ValidateGTIN("04150000021126")            // nil
+check, _ := gs1.ComputeGTINCheckDigit("0415000002112") // '6'
+upca, _ := gs1.ExpandUPCE("012345")                    // 12-digit UPC-A
 ```
 
-## Input Formats
+### Dates
 
-- GS1-128 scanner output: `0104150000021126172506301012345`
-- With FNC1 separators (ASCII 29): `2112345\x1D10LOT1`
-- Bracket notation: `(01)04150000021126(17)250630(10)12345`
-- AIM prefix (DataMatrix): `]d2...`, `]d1...` (older)
-- AIM prefix (GS1-128): `]C1...`
-- AIM prefix (QR/DotCode): `]Q3...`, `]J1...`
+GS1 dates are `YYMMDD` with years mapped to 2000–2099. A day of `00` denotes
+the end of the month in the GS1 General Specifications; some national systems
+interpret it as the first day instead.
 
-## Scanner Resilience
+```go
+t, _ := gs1.ParseDate("250200")                                   // 2025-02-28
+t, _ = gs1.ParseDateWithOptions("250200",
+        gs1.DateOptions{DayZero: gs1.DayZeroFirstDay})            // 2025-02-01
+raw, _ := gs1.ParseDateRaw("250630")                              // "250630", validated
+```
 
-`Parse()` automatically handles common 2D scanner quirks:
+### Regulatory profiles
 
-- **Trailing CR/LF** — stripped (scanners often append `\r\n`)
-- **UTF-8 BOM** — stripped (`\xEF\xBB\xBF` from some USB configs)
-- **Null bytes** — removed (USB HID scanners may inject `\x00`)
-- **CR/LF as FNC1** — converted to GS (`\x1D`) when used as field separator
-- **Consecutive FNC1** — collapsed to single separator
-
-No configuration needed — resilience is the default.
-
-## Regulatory Validation (LATAM Pharma Traceability)
-
-Validate that a barcode contains the minimum AIs required by each country's regulator:
+Check that a barcode carries the AIs a national regulator mandates for
+pharmaceutical traceability.
 
 ```go
 b, _ := gs1.Parse("0104150000021126172506302112345\x1D10LOT1")
 
-err := b.ValidateANVISA()   // Brazil: requires 01 + 17 + 10 + 21
-err = b.ValidateANMAT()     // Argentina: requires 01 + 17 + 10 + 21
-err = b.ValidateSNFA()      // Chile: requires 01 + 17 + 10
-err = b.ValidateCOFEPRIS()  // Mexico: requires 01 + 17 + 10
-
-// Or use the Regulator type directly
-err = gs1.ANVISA.Validate(b)
+err := gs1.ANVISA.Validate(b)   // or b.ValidateANVISA()
 ```
 
 | Regulator | Country | Required AIs |
 |---|---|---|
-| ANVISA | Brazil | 01 (GTIN) + 17 (Expiry) + 10 (Lot) + 21 (Serial) |
-| ANMAT | Argentina | 01 (GTIN) + 17 (Expiry) + 10 (Lot) + 21 (Serial) |
-| SNFA | Chile | 01 (GTIN) + 17 (Expiry) + 10 (Lot) |
-| COFEPRIS | Mexico | 01 (GTIN) + 17 (Expiry) + 10 (Lot) |
+| ANVISA | Brazil | 01, 17, 10, 21 |
+| ANMAT | Argentina | 01, 17, 10, 21 |
+| SNFA | Chile | 01, 17, 10 |
+| COFEPRIS | Mexico | 01, 17, 10 |
 
-### CLI
+Custom profiles are plain values: `gs1.Regulator{Name: "…", RequiredAIs: []string{"01", "10"}}`.
+
+## Supported Application Identifiers
+
+Formats use GS1 Syntax Dictionary notation: `N14` is exactly 14 digits,
+`X..20` is up to 20 characters from the GS1 AI encodable character set 82.
+
+| AI | Data title | Format |
+|---|---|---|
+| 00 | SSCC | N18 |
+| 01 | GTIN | N14 |
+| 02 | Content GTIN | N14 |
+| 10 | Batch/Lot | X..20 |
+| 11 | Production Date | N6 |
+| 13 | Packaging Date | N6 |
+| 15 | Best Before Date | N6 |
+| 17 | Expiration Date | N6 |
+| 21 | Serial Number | X..20 |
+| 30 | Count | N..8 |
+| 37 | Count of Trade Items | N..8 |
+| 240 | Additional Product ID | X..30 |
+| 241 | Customer Part Number | X..30 |
+| 310n | Net Weight, kg | N6 |
+| 320n | Net Weight, lb | N6 |
+| 330n | Gross Weight, kg | N6 |
+| 340n | Gross Weight, lb | N6 |
+| 402 | GSIN | N17 |
+| 414 | GLN | N13 |
+| 710–714 | NHRN (DE, FR, ES, BR, PT) | X..20 |
+| 90 | Internal | X..30 |
+| 91–99 | Internal | X..90 |
+
+`gs1 ai <code>` on the command line, or `gs1.LookupAI` in code, returns the
+same information. Requests for additional AIs are welcome; see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Input formats
+
+| Source | Example |
+|---|---|
+| GS1-128 keyboard wedge | `0104150000021126172506301012345` |
+| FNC1 as ASCII 29 | `2112345\x1D10LOT1` |
+| Human-readable brackets | `(01)04150000021126(17)250630(10)12345` |
+| AIM prefix, DataMatrix | `]d2…` (also `]d1`) |
+| AIM prefix, GS1-128 | `]C1…` |
+| AIM prefix, QR / DotCode / composite | `]Q3…`, `]J1…`, `]e0…` |
+| Bare GTIN (EAN-13, UPC-A, GTIN-14) | `7800038041425` → AI 01, zero-padded to 14 |
+
+GS1 DataBar needs no special handling: scanners decode it to the same
+element string as GS1-128.
+
+## Command line
 
 ```bash
-hinterop parse gs1 "<barcode>" --validate anvisa
-hinterop parse gs1 "<barcode>" --validate anmat
-hinterop parse gs1 "<barcode>" --validate snfa
-hinterop parse gs1 "<barcode>" --validate cofepris
+gs1 parse "0104150000021126172506302112345ABC"        # text table
+gs1 parse -json -iso "(01)04150000021126(17)250200"   # JSON, ISO dates
+gs1 parse -validate anvisa "$SCAN"                     # exit 1 if non-compliant
+cat scans.txt | gs1 parse -json                        # one JSON object per line
+gs1 gtin 04150000021126                                # check digit
+gs1 ai 3102                                            # AI (3102)  Net Weight kg  N6
 ```
 
-## WebAssembly (Browser / Edge)
+Exit codes: `0` success, `1` invalid input or failed validation, `2` usage error.
 
-The parser compiles to WASM for use in browsers, Electron apps, and edge workers.
+## WebAssembly
 
-### Build
+The same parser runs in browsers, Electron and edge runtimes.
 
 ```bash
-cd gs1
-bash wasm/build.sh
+make wasm   # produces wasm/gs1.wasm and a servable example under wasm/example/
 ```
-
-Produces `wasm/gs1.wasm` (~3 MB) and copies `wasm_exec.js` from the Go SDK.
-
-### JavaScript API
 
 ```html
 <script src="wasm_exec.js"></script>
-<script src="gs1-loader.js" type="module"></script>
 <script type="module">
   import { loadGS1 } from './gs1-loader.js';
   const gs1 = await loadGS1('gs1.wasm');
 
-  // Parse a barcode (dates returned as raw YYMMDD by default)
-  const result = gs1.parse("0104150000021126172506301012345");
-  console.log(result.gtin);           // "04150000021126"
-  console.log(result.expirationDate); // "250630"
-  console.log(result.elements);       // [{ai: "01", value: "04150000021126"}, ...]
+  const r = gs1.parse("0104150000021126172502001012345", { dateFormat: "iso", dayZero: "first" });
+  r.gtin;            // "04150000021126"
+  r.expirationDate;  // "2025-02-01"
 
-  // Parse with ISO dates and first-day-of-month for day 00
-  const r2 = gs1.parse("0104150000021126172502001012345", {
-    dateFormat: "iso",
-    dayZero: "first"
-  });
-  console.log(r2.expirationDate); // "2025-02-01"
-
-  // Validate GTIN check digit
-  gs1.validateGTIN("04150000021126"); // true
-
-  // Regulatory validation
-  const err = gs1.validateRegulatory(barcode, "anvisa");
-  // null = compliant, string = error message
+  gs1.validateGTIN("04150000021126");            // true
+  gs1.validateRegulatory(scan, "anvisa");       // null when compliant, else message
 </script>
 ```
 
-TypeScript declarations: [`wasm/gs1.d.ts`](wasm/gs1.d.ts)
+TypeScript declarations live in [`wasm/gs1.d.ts`](wasm/gs1.d.ts). Design
+notes are in [ADR 0005](docs/adr/0005-webassembly-target.md).
 
-### Browser Support
+## Scope
 
-| Browser | Minimum | Status |
-|---------|---------|--------|
-| Chrome | 57+ | Supported |
-| Firefox | 52+ | Supported |
-| Safari | 11+ | Supported |
-| Edge | 79+ (Chromium) | Supported |
-| IE 11 | N/A | Not supported |
+This library is a parsing and validation layer. It does not generate
+barcodes, verify print quality, resolve GS1 Digital Link URIs, or implement
+business documents such as dispatch advices. See
+[ADR 0002](docs/adr/0002-parser-scope.md) for the reasoning and the GS1
+resources that cover those areas.
 
-### Testing in Browser
+## Related GS1 resources
 
-```bash
-cd gs1
-bash wasm/build.sh
-python3 -m http.server 8080 --directory wasm/example/
-# Open http://localhost:8080 in Chrome/Firefox/Safari
-```
+- [GS1 General Specifications](https://www.gs1.org/standards/barcodes-epcrfid-id-keys/gs1-general-specifications)
+- [GS1 Syntax Dictionary](https://github.com/gs1/gs1-syntax-dictionary) and
+  [GS1 Barcode Syntax Engine](https://github.com/gs1/gs1-syntax-engine)
+- [GS1 Healthcare](https://www.gs1.org/industries/healthcare)
 
-Open the DevTools console and verify:
-- `gs1.parse("0104150000021126172506301012345")` returns a valid object
-- `gs1.validateGTIN("04150000021126")` returns `true`
-- Parse latency < 1ms (shown in the demo UI)
+## Contributing
+
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+for the workflow and [docs/adr](docs/adr) for design history. Security
+reports go through [SECURITY.md](SECURITY.md).
+
+## License
+
+MIT. Copyright (c) 2026 Agustín Bereciartúa Castillo. See [LICENSE](LICENSE).
+
+GS1 is a registered trademark of GS1 AISBL. This project is an independent
+implementation of publicly available specifications and is not affiliated
+with, sponsored by, or endorsed by GS1.

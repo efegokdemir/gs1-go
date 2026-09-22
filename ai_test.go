@@ -19,7 +19,7 @@ func TestAITableIntegrity(t *testing.T) {
 	}
 }
 
-func TestLookupAI(t *testing.T) {
+func TestLookupAIAt(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -48,20 +48,69 @@ func TestLookupAI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			spec, aiLen, ok := lookupAI(tt.input, tt.pos)
+			spec, aiLen, ok := lookupAIAt(tt.input, tt.pos)
 			if ok != tt.wantOK {
-				t.Errorf("lookupAI() ok = %v, want %v", ok, tt.wantOK)
+				t.Errorf("lookupAIAt() ok = %v, want %v", ok, tt.wantOK)
 				return
 			}
 			if !ok {
 				return
 			}
 			if spec.AI != tt.wantAI {
-				t.Errorf("lookupAI() AI = %q, want %q", spec.AI, tt.wantAI)
+				t.Errorf("lookupAIAt() AI = %q, want %q", spec.AI, tt.wantAI)
 			}
 			if aiLen != tt.wantLen {
-				t.Errorf("lookupAI() len = %d, want %d", aiLen, tt.wantLen)
+				t.Errorf("lookupAIAt() len = %d, want %d", aiLen, tt.wantLen)
 			}
 		})
+	}
+}
+
+func TestLookupAI(t *testing.T) {
+	tests := []struct {
+		code       string
+		wantName   string
+		wantFormat string
+		wantOK     bool
+	}{
+		{code: "01", wantName: "GTIN", wantFormat: "N14", wantOK: true},
+		{code: "00", wantName: "SSCC", wantFormat: "N18", wantOK: true},
+		{code: "10", wantName: "Batch/Lot", wantFormat: "X..20", wantOK: true},
+		{code: "17", wantName: "Expiration Date", wantFormat: "N6", wantOK: true},
+		{code: "30", wantName: "Count", wantFormat: "N..8", wantOK: true},
+		{code: "3102", wantName: "Net Weight kg", wantFormat: "N6", wantOK: true},
+		{code: "91", wantName: "Internal", wantFormat: "X..90", wantOK: true},
+		{code: "713", wantName: "NHRN Brazil", wantFormat: "X..20", wantOK: true},
+		{code: "88", wantOK: false},
+		{code: "", wantOK: false},
+		{code: "0", wantOK: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.code, func(t *testing.T) {
+			got, ok := LookupAI(tt.code)
+			if ok != tt.wantOK {
+				t.Fatalf("LookupAI(%q) ok = %v, want %v", tt.code, ok, tt.wantOK)
+			}
+			if !ok {
+				return
+			}
+			if got.Code != tt.code {
+				t.Errorf("Code = %q, want %q", got.Code, tt.code)
+			}
+			if got.Name != tt.wantName {
+				t.Errorf("Name = %q, want %q", got.Name, tt.wantName)
+			}
+			if got.Format != tt.wantFormat {
+				t.Errorf("Format = %q, want %q", got.Format, tt.wantFormat)
+			}
+		})
+	}
+}
+
+func TestLookupAICoversTable(t *testing.T) {
+	for code := range aiTable {
+		if _, ok := LookupAI(code); !ok {
+			t.Errorf("LookupAI(%q) = false for table entry", code)
+		}
 	}
 }

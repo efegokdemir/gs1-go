@@ -2,7 +2,7 @@ package gs1
 
 import "testing"
 
-func FuzzParseGS1(f *testing.F) {
+func FuzzParse(f *testing.F) {
 	// Valid barcodes
 	f.Add("0104150000021126172506301012345")
 	f.Add("0104150000021126172506302112345ABC\x1D10LOT42X")

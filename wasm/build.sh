@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Build the GS1 WASM module.
-# Run from the gs1/ directory: bash wasm/build.sh
+# Run from the repository root: bash wasm/build.sh
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-GS1_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$GS1_DIR"
+cd "$REPO_DIR"
 
 echo "Building gs1.wasm..."
 GOOS=js GOARCH=wasm go build -ldflags="-s -w" -o wasm/gs1.wasm ./cmd/gs1-wasm/

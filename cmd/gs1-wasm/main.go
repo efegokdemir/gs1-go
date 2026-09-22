@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"syscall/js"
 
-	"github.com/galenzo17/health-interop/gs1"
+	"github.com/galenzo17/gs1-go"
 )
 
 type elementJSON struct {

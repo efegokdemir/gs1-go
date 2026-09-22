@@ -1,0 +1,20 @@
+# Binaries and test artifacts
+*.exe
+*.test
+*.out
+*.prof
+/gs1
+/dist/
+
+# Coverage
+coverage.html
+
+# Fuzz corpus generated locally (seed corpus under testdata/ is committed)
+/testdata/fuzz/**/[0-9a-f]*
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store

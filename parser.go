@@ -134,7 +134,7 @@ func ParseInto(input string, b *Barcode) error {
 			continue
 		}
 
-		spec, aiLen, ok := lookupAI(data, pos)
+		spec, aiLen, ok := lookupAIAt(data, pos)
 		if !ok {
 			return fmt.Errorf("%w: at position %d", ErrUnknownAI, pos)
 		}
@@ -302,7 +302,7 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 	bestPos := -1
 	bestDist := len(data)
 	for i := from; i < to; i++ {
-		spec, aiLen, ok := lookupAI(data, i)
+		spec, aiLen, ok := lookupAIAt(data, i)
 		if !ok {
 			continue
 		}
@@ -355,7 +355,7 @@ func canParseFrom(data string, pos int) bool {
 			pos++
 			continue
 		}
-		spec, aiLen, ok := lookupAI(data, pos)
+		spec, aiLen, ok := lookupAIAt(data, pos)
 		if !ok {
 			return false
 		}

@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race -count=1 ./...
+      - name: Build CLI binaries
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            os="${target%/*}"; arch="${target#*/}"
+            ext=""; [ "$os" = "windows" ] && ext=".exe"
+            out="dist/gs1_${VERSION}_${os}_${arch}${ext}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath \
+              -ldflags="-s -w -X main.version=${VERSION}" -o "$out" ./cmd/gs1
+          done
+          GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" -o dist/gs1.wasm ./cmd/gs1-wasm
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/ 2>/dev/null || cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" dist/
+          cp wasm/gs1-loader.js wasm/gs1.d.ts dist/
+          (cd dist && sha256sum * > checksums.txt)
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*
