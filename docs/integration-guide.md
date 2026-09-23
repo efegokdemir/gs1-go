@@ -102,7 +102,7 @@ scan record contains:
 | Field | Source | Storage guidance |
 |---|---|---|
 | `raw_element_string` | `Barcode.Raw` | Preserve exactly for audit and replay. |
-| `gtin14` | AI `01` or `02` | Store as a fixed-width string, not an integer. |
+| `gtin14` | AI `01` | Store the trade-item GTIN as a fixed-width string, not an integer. AI `02` identifies contained trade items. |
 | `lot` | AI `10` | Preserve leading zeroes and case. |
 | `serial` | AI `21` | Preserve as text; it may be alphanumeric. |
 | `expiry_date` | AI `17` | Convert only after successful date validation. |
@@ -136,16 +136,25 @@ include:
 | Application value | EANCOM DESADV location |
 |---|---|
 | SSCC | `GIN+BJ` |
-| GTIN | `LIN` (with the agreed item qualifier) |
+| GTIN | `LIN+1++04150000021126:SRV` |
 | Additional item identifier | `PIA` |
-| Quantity | `QTY` |
-| Expiry date | `DTM+361` |
+| Quantity | `QTY+12` |
+| Expiry date | `DTM+361:20250630:102` (AI 17 is YYMMDD; convert after validation) |
 | Lot or batch | `GIN+BX` |
 
-GS1 XML DespatchAdvice has equivalent identification, quantity, date, and
-hierarchy elements. The exact XML element and qualifier depend on the message
-version and partner implementation guide; do not generate EANCOM or XML by
-concatenating scanner text.
+GS1 XML DespatchAdvice 3.x uses equivalent structures for the same record:
+
+| Application value | GS1 XML DespatchAdvice 3.x location |
+|---|---|
+| Logistic-unit SSCC | `despatchAdviceLogisticUnit/logisticUnitIdentification/sscc` |
+| Trade-item GTIN | `despatchAdviceLogisticUnit/transactionalTradeItem/gtin` |
+| Lot or batch | `transactionalTradeItem/lotNumber` |
+| Expiration date | `transactionalTradeItem/itemExpirationDate` |
+| Dispatched quantity | `despatchAdviceLogisticUnit/transactionalTradeItem/despatchedQuantity` |
+
+The exact XML element and qualifier depend on the message version and partner
+implementation guide; do not generate EANCOM or XML by concatenating scanner
+text.
 
 ## Transports and standards outside this module
 
