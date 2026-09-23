@@ -179,7 +179,8 @@ func ParseIntoWithOptions(input string, b *Barcode, opts ParseOptions) error {
 	return nil
 }
 
-// Validate checks the Application Identifier association rules.
+// Validate is the umbrella for all semantic Application Identifier checks,
+// including association rules.
 func (b Barcode) Validate() error { return b.ValidateAssociations() }
 
 // skipPrefix skips leading FNC1 and AIM symbology identifiers.

@@ -132,12 +132,17 @@ check, _ := gs1.ComputeGTINCheckDigit("0415000002112") // '6'
 upca, _ := gs1.ExpandUPCE("012345")                    // 12-digit UPC-A
 ```
 
-## Association rules
+### Association rules
 
 `Parse` remains lenient for scanner workflows. Use `Barcode.Validate()` or
 `ParseWithOptions` with `ValidateAssociations: true` to enforce required pairs
 and exclusions such as `(02)` with `(37)`, weights with a GTIN, and mutually
 exclusive identifier variants.
+
+The strict association rules currently cover: AI 01 excluding 02 and 37; AI
+02 requiring 37; AI 37 requiring AI 00 with 02 or 8026; AI 21 requiring 01,
+03, or 8006; net weight requiring 01 or 02; gross weight requiring 00 or 01;
+one decimal variant per measure prefix; and AI 8017 excluding 8018.
 
 ### Dates
 

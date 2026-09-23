@@ -47,7 +47,13 @@ func validateExclusiveRules(seen map[string]bool) error {
 }
 
 func validateWeightRules(seen map[string]bool) error {
-	for _, prefix := range []string{"310", "320", "330", "340", "350", "360"} {
+	prefixes := make(map[string]struct{})
+	for ai := range seen {
+		if len(ai) == 4 && ai[0] == '3' {
+			prefixes[ai[:3]] = struct{}{}
+		}
+	}
+	for prefix := range prefixes {
 		variants := 0
 		for ai := range seen {
 			if len(ai) == 4 && ai[:3] == prefix {

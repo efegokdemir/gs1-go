@@ -401,6 +401,7 @@ func TestValidateAssociations(t *testing.T) {
 	}
 
 	for _, valid := range []Barcode{
+		{Elements: []Element{{AI: "00"}}},
 		{Elements: []Element{{AI: "00"}, {AI: "02"}, {AI: "37"}}},
 		{Elements: []Element{{AI: "00"}, {AI: "8026"}, {AI: "37"}}},
 		{Elements: []Element{{AI: "01"}, {AI: "21"}}},
@@ -420,6 +421,19 @@ func TestParseWithAssociationValidation(t *testing.T) {
 	}
 	if _, err := ParseWithOptions("0204150000021126", ParseOptions{ValidateAssociations: true}); !errors.Is(err, ErrInvalidAssociation) {
 		t.Errorf("missing association error = %v, want ErrInvalidAssociation", err)
+	}
+}
+
+func TestParseRemainsLenientForAssociationMismatches(t *testing.T) {
+	for _, input := range []string{
+		"3720",
+		"0204150000021126",
+		"01041500000211260204150000021126",
+		"10LOT42",
+	} {
+		if _, err := Parse(input); err != nil {
+			t.Errorf("Parse(%q) error = %v, want lenient success", input, err)
+		}
 	}
 }
 
