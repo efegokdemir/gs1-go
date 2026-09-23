@@ -14,10 +14,41 @@ type Element struct {
 	Value string // raw data value
 }
 
+// Symbology identifies the carrier reported by an AIM symbology identifier.
+type Symbology uint8
+
+const (
+	// SymUnknown indicates that no recognized AIM prefix was present.
+	SymUnknown Symbology = iota
+	// SymGS1128 identifies a GS1-128 carrier.
+	SymGS1128
+	// SymDataMatrix identifies a GS1 DataMatrix carrier.
+	SymDataMatrix
+	// SymQR identifies a GS1 QR carrier.
+	SymQR
+	// SymEANUPC identifies an EAN/UPC carrier.
+	SymEANUPC
+	// SymITF14 identifies an ITF-14 carrier.
+	SymITF14
+	// SymDataBar identifies a GS1 DataBar carrier.
+	SymDataBar
+	// SymComposite identifies a GS1 composite carrier.
+	SymComposite
+	// SymDotCode identifies a GS1 DotCode carrier.
+	SymDotCode
+)
+
 // Barcode represents a fully parsed GS1 barcode (GS1-128 or DataMatrix).
 type Barcode struct {
-	Raw      string    // original input string
-	Elements []Element // parsed AI-value pairs in scan order
+	Raw       string    // original input string
+	Elements  []Element // parsed AI-value pairs in scan order
+	Symbology Symbology // detected carrier, when an AIM prefix was present
+}
+
+// ParseOptions controls ambiguous carrier handling.
+type ParseOptions struct {
+	// AssumeBareGTIN8 treats an unprefixed eight-digit numeric input as GTIN-8.
+	AssumeBareGTIN8 bool
 }
 
 // GTIN returns the GTIN value (AI 01), or "" if not present.
@@ -92,6 +123,7 @@ func (b Barcode) Get(ai string) (string, bool) {
 func (b *Barcode) Reset() {
 	b.Raw = ""
 	b.Elements = b.Elements[:0]
+	b.Symbology = SymUnknown
 }
 
 // Parse parses a GS1 barcode string (GS1-128 or DataMatrix scanner output)
@@ -99,8 +131,13 @@ func (b *Barcode) Reset() {
 // (e.g., ]C1, ]d2), FNC1 separators (ASCII 29), and bracket notation
 // (e.g., "(01)04150000021126(17)250630").
 func Parse(input string) (Barcode, error) {
+	return ParseWithOptions(input, ParseOptions{})
+}
+
+// ParseWithOptions parses a GS1 barcode with explicit ambiguity options.
+func ParseWithOptions(input string, options ParseOptions) (Barcode, error) {
 	b := Barcode{Elements: make([]Element, 0, 8)}
-	if err := ParseInto(input, &b); err != nil {
+	if err := ParseIntoWithOptions(input, &b, options); err != nil {
 		return Barcode{}, err
 	}
 	return b, nil
@@ -110,6 +147,12 @@ func Parse(input string) (Barcode, error) {
 // its allocated memory. Call b.Reset() before reuse to clear previous data.
 // Each goroutine must use its own Barcode.
 func ParseInto(input string, b *Barcode) error {
+	return ParseIntoWithOptions(input, b, ParseOptions{})
+}
+
+// ParseIntoWithOptions parses into an existing Barcode with explicit
+// ambiguity options, reusing its allocated memory.
+func ParseIntoWithOptions(input string, b *Barcode, options ParseOptions) error {
 	if strings.TrimSpace(input) == "" {
 		return ErrEmptyInput
 	}
@@ -118,15 +161,26 @@ func ParseInto(input string, b *Barcode) error {
 	data = stripBracketNotation(data)
 
 	b.Raw = input
+	if len(data) == 8 && isDigits(data) && !options.AssumeBareGTIN8 {
+		if _, knownAI := aiTable[data[:2]]; knownAI {
+			// Preserve unprefixed AI values such as (11) production dates.
+		} else {
+			return fmt.Errorf("%w: bare GTIN-8 requires ParseOptions.AssumeBareGTIN8 or an AIM prefix", ErrInvalidData)
+		}
+	}
 
 	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
-	if isBareGTIN(data) {
+	if isBareGTIN(data, options.AssumeBareGTIN8) {
 		padded := padGTIN(data)
 		b.Elements = append(b.Elements, Element{AI: "01", Value: padded})
 		return nil
 	}
 
-	pos := skipPrefix(data)
+	pos, sym, aimCode := skipPrefix(data)
+	b.Symbology = sym
+	if done, err := parseCarrierElement(data, pos, sym, aimCode, b); done || err != nil {
+		return err
+	}
 
 	for pos < len(data) {
 		if data[pos] == byte(fnc1) {
@@ -161,20 +215,101 @@ func ParseInto(input string, b *Barcode) error {
 }
 
 // skipPrefix skips leading FNC1 and AIM symbology identifiers.
-func skipPrefix(data string) int {
+func skipPrefix(data string) (int, Symbology, byte) {
 	pos := 0
 	if pos < len(data) && data[pos] == byte(fnc1) {
 		pos++
 	}
+	var sym Symbology
+	var code byte
 	if pos < len(data) && data[pos] == ']' && pos+3 <= len(data) {
-		sym := data[pos+1]
-		// ]C1 = GS1-128, ]d1/]d2 = DataMatrix, ]e0 = GS1 composite,
-		// ]Q3 = GS1 QR, ]J1 = GS1 DotCode
-		if sym == 'C' || sym == 'd' || sym == 'e' || sym == 'Q' || sym == 'J' {
+		aimSym := data[pos+1]
+		code = data[pos+2]
+		sym = symbologyForAIM(aimSym)
+		if isAIMPrefix(aimSym) {
 			pos += 3
 		}
 	}
-	return pos
+	return pos, sym, code
+}
+
+func symbologyForAIM(code byte) Symbology {
+	switch code {
+	case 'C':
+		return SymGS1128
+	case 'd':
+		return SymDataMatrix
+	case 'Q':
+		return SymQR
+	case 'e':
+		return SymComposite
+	case 'J':
+		return SymDotCode
+	case 'E':
+		return SymEANUPC
+	case 'I':
+		return SymITF14
+	case 'X':
+		return SymDataBar
+	default:
+		return SymUnknown
+	}
+}
+
+func isAIMPrefix(code byte) bool {
+	return strings.ContainsRune("CdQeJEIAX", rune(code))
+}
+
+func parseCarrierElement(data string, pos int, sym Symbology, code byte, b *Barcode) (bool, error) {
+	if sym != SymEANUPC && sym != SymITF14 {
+		return false, nil
+	}
+	value, ok, err := parseCarrierPayload(data[pos:], sym, code)
+	if err != nil || !ok {
+		return true, err
+	}
+	b.Elements = append(b.Elements, Element{AI: "01", Value: value})
+	return true, nil
+}
+
+func parseCarrierPayload(data string, sym Symbology, code byte) (string, bool, error) {
+	if !isDigits(data) {
+		return "", false, fmt.Errorf("%w: symbology payload must be numeric", ErrInvalidData)
+	}
+	if sym == SymITF14 {
+		return fixedCarrierPayload(data, 14, "ITF-14")
+	}
+	switch code {
+	case '4':
+		return fixedCarrierPayload(data, 8, "EAN-8")
+	case '0':
+		if len(data) == 8 && data[0] == '0' {
+			upca, err := ExpandUPCE(data)
+			if err != nil {
+				return "", false, err
+			}
+			return padGTIN(upca), true, nil
+		}
+		return variableCarrierPayload(data)
+	case '1', '2':
+		return variableCarrierPayload(data)
+	default:
+		return "", false, nil
+	}
+}
+
+func fixedCarrierPayload(data string, length int, name string) (string, bool, error) {
+	if len(data) != length {
+		return "", false, fmt.Errorf("%w: %s payload must be %d digits, got %d", ErrInvalidData, name, length, len(data))
+	}
+	return padGTIN(data), true, nil
+}
+
+func variableCarrierPayload(data string) (string, bool, error) {
+	if len(data) != 12 && len(data) != 13 && len(data) != 14 {
+		return "", false, fmt.Errorf("%w: EAN/UPC payload length %d not supported", ErrInvalidData, len(data))
+	}
+	return padGTIN(data), true, nil
 }
 
 // extractData reads the data field for an AI starting at pos.
@@ -270,21 +405,38 @@ func stripBracketNotation(input string) string {
 // isBareGTIN reports whether data looks like a standalone GTIN without AI
 // prefix (e.g., EAN-13 "7800038041425", EAN-8 "96385074", UPC-A, GTIN-14).
 // It returns false if the data could be parsed as AI-prefixed data.
-func isBareGTIN(data string) bool {
+func isBareGTIN(data string, assumeGTIN8 bool) bool {
 	n := len(data)
 	// Only detect 12, 13, 14 digit bare GTINs. EAN-8 (8 digits) is too
 	// ambiguous with 2-digit AI codes and is rare in healthcare.
-	if n != 12 && n != 13 && n != 14 {
+	if n != 8 && n != 12 && n != 13 && n != 14 {
 		return false
 	}
-	for i := 0; i < n; i++ {
-		if data[i] < '0' || data[i] > '9' {
+	if !isDigits(data) {
+		return false
+	}
+	if n == 8 && !assumeGTIN8 {
+		return false
+	}
+	// If the first 2 digits match a known AI, treat as AI-prefixed data unless
+	// the caller explicitly selected the ambiguous bare GTIN-8 interpretation.
+	if n == 8 && assumeGTIN8 {
+		return true
+	}
+	if n >= 2 {
+		if _, ok := aiTable[data[0:2]]; ok {
 			return false
 		}
 	}
-	// If the first 2 digits match a known AI, treat as AI-prefixed data.
-	if n >= 2 {
-		if _, ok := aiTable[data[0:2]]; ok {
+	return true
+}
+
+func isDigits(data string) bool {
+	if len(data) == 0 {
+		return false
+	}
+	for i := 0; i < len(data); i++ {
+		if data[i] < '0' || data[i] > '9' {
 			return false
 		}
 	}

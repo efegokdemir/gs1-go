@@ -4,6 +4,19 @@ export interface GS1Element {
   value: string;
 }
 
+/** Carrier identified by an AIM symbology prefix. */
+export enum GS1Symbology {
+  Unknown = 0,
+  GS1128 = 1,
+  DataMatrix = 2,
+  QR = 3,
+  EANUPC = 4,
+  ITF14 = 5,
+  DataBar = 6,
+  Composite = 7,
+  DotCode = 8,
+}
+
 /** Result of parsing a GS1 barcode string. */
 export interface GS1ParseResult {
   raw: string;

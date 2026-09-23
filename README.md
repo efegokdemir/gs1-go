@@ -30,7 +30,8 @@ b.ExpirationDate() // 2025-06-30 00:00:00 +0000 UTC
 
 - **Element string parsing** for fixed- and variable-length AIs with FNC1
   (ASCII 29) separators, bracket notation `(01)…(17)…`, AIM symbology
-  identifiers (`]C1`, `]d2`, `]Q3`, `]e0`, `]J1`) and bare EAN-13 / UPC-A / GTIN-14.
+  identifiers (`]C1`, `]d2`, `]Q3`, `]e0`, `]J1`, `]E`, `]I`) and bare EAN-13 / UPC-A / GTIN-14.
+- **Carrier detection** through `Barcode.Symbology`, including EAN/UPC and ITF-14.
 - **Scanner resilience by default.** UTF-8 BOM, CR/LF, NUL bytes and
   duplicated FNC1 from keyboard-wedge and USB HID scanners are normalized
   before parsing. See [ADR 0003](docs/adr/0003-scanner-resilience.md).

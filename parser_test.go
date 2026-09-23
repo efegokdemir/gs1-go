@@ -320,6 +320,44 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestSymbologyAndRetailCarriers(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		options  ParseOptions
+		wantSym  Symbology
+		wantGTIN string
+		wantErr  bool
+	}{
+		{name: "GS1-128", input: "]C10104150000021126", wantSym: SymGS1128, wantGTIN: "04150000021126"},
+		{name: "DataMatrix", input: "]d20104150000021126", wantSym: SymDataMatrix, wantGTIN: "04150000021126"},
+		{name: "QR", input: "]Q30104150000021126", wantSym: SymQR, wantGTIN: "04150000021126"},
+		{name: "EAN-8", input: "]E496385074", wantSym: SymEANUPC, wantGTIN: "00000096385074"},
+		{name: "UPC-E", input: "]E000123457", wantSym: SymEANUPC, wantGTIN: "00001234000057"},
+		{name: "ITF-14", input: "]I012345678901231", wantSym: SymITF14, wantGTIN: "12345678901231"},
+		{name: "bare EAN-8 rejected", input: "89312345", wantSym: SymUnknown, wantErr: true},
+		{name: "bare EAN-8 opt-in", input: "89312345", options: ParseOptions{AssumeBareGTIN8: true}, wantSym: SymUnknown, wantGTIN: "00000089312345"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := ParseWithOptions(tt.input, tt.options)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseWithOptions(%q) error = %v, wantErr %t", tt.input, err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if b.Symbology != tt.wantSym {
+				t.Errorf("Symbology = %v, want %v", b.Symbology, tt.wantSym)
+			}
+			if b.GTIN() != tt.wantGTIN {
+				t.Errorf("GTIN() = %q, want %q", b.GTIN(), tt.wantGTIN)
+			}
+		})
+	}
+}
+
 func TestParseConvenienceMethods(t *testing.T) {
 	input := "0104150000021126" + "17250630" + "2112345ABC\x1D" + "10LOT42X"
 	b, err := Parse(input)
