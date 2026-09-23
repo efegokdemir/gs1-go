@@ -206,6 +206,8 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 	if opts.iso {
 		if t, err := b.PackagingDate(); err == nil {
 			out.PackagingDate = t.Format("2006-01-02")
+		} else {
+			out.PackagingDate = ""
 		}
 	}
 	for _, e := range b.Elements {

@@ -64,7 +64,6 @@ func parse(_ js.Value, args []js.Value) any {
 		return errorResult(err.Error())
 	}
 
-	packagingDate, _ := b.Get("13")
 	result := parseResultJSON{
 		Raw:               b.Raw,
 		Elements:          make([]elementJSON, len(b.Elements)),
@@ -75,7 +74,7 @@ func parse(_ js.Value, args []js.Value) any {
 		CountOfTradeItems: b.CountOfTradeItems(),
 		GLN:               b.GLN(),
 		GSIN:              b.GSIN(),
-		PackagingDate:     packagingDate,
+		PackagingDate:     "",
 	}
 	for i, e := range b.Elements {
 		result.Elements[i] = elementJSON{AI: e.AI, Value: e.Value}

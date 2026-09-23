@@ -401,6 +401,11 @@ func TestParseConvenienceMethodsMissing(t *testing.T) {
 	if err == nil {
 		t.Error("ExpirationDate() should error when AI 17 is missing")
 	}
+
+	_, err = b.PackagingDate()
+	if !errors.Is(err, ErrInvalidData) {
+		t.Errorf("PackagingDate() error = %v, want ErrInvalidData", err)
+	}
 }
 
 func TestBarcodeReset(t *testing.T) {

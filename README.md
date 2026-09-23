@@ -16,7 +16,7 @@ receiving, and pharmaceutical serialization systems.
 ```go
 import "github.com/galenzo17/gs1-go"
 
-b, err := gs1.Parse("]d20104150000021126172506302112345ABC\x1D10LOT42X")
+b, err := gs1.Parse("(01)04150000021126(02)04150000021126(13)250601(17)250630(37)42(402)12345678901234567(414)1234567890123(21)12345ABC(10)LOT42X")
 if err != nil {
     return err
 }
