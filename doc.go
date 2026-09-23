@@ -27,7 +27,8 @@
 //	fmt.Println(b.GTIN(), b.Lot(), b.SerialNumber())
 //
 // ParseInto reuses a caller-owned Barcode for zero-allocation parsing in
-// hot loops. Each goroutine must own its Barcode.
+// hot loops. Each goroutine must own its Barcode. ParseWithOptions and
+// ParseIntoWithOptions enable opt-in GTIN check-digit validation.
 //
 // # Validation
 //

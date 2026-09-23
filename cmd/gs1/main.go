@@ -63,7 +63,7 @@ func usage(w io.Writer) {
 	fmt.Fprint(w, `gs1 - parse and validate GS1 barcode element strings
 
 Usage:
-  gs1 parse [-json] [-iso] [-validate REGULATOR] [BARCODE]
+  gs1 parse [-json] [-iso] [-strict] [-validate REGULATOR] [BARCODE]
   gs1 gtin GTIN
   gs1 ai CODE
   gs1 version
@@ -71,6 +71,7 @@ Usage:
 Commands:
   parse    Parse a GS1-128 / DataMatrix element string. Reads stdin line by
            line when BARCODE is omitted.
+           Use -strict to validate GTIN check digits in AI (01) and (02).
   gtin     Validate the check digit of a GTIN-8/12/13/14.
   ai       Show name and format of an Application Identifier.
   version  Print the build version.
@@ -96,6 +97,7 @@ type parseOutput struct {
 type parseOptions struct {
 	json      bool
 	iso       bool
+	strict    bool
 	validate  string
 	regulator *gs1.Regulator
 }
@@ -113,6 +115,7 @@ func runParse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var opts parseOptions
 	fs.BoolVar(&opts.json, "json", false, "emit one JSON object per barcode")
 	fs.BoolVar(&opts.iso, "iso", false, "render date AIs (11, 13, 15, 17) as ISO 8601")
+	fs.BoolVar(&opts.strict, "strict", false, "validate GTIN check digits in AI (01) and (02)")
 	fs.StringVar(&opts.validate, "validate", "", "check required AIs for a regulator: anvisa, anmat, snfa, cofepris")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -180,7 +183,7 @@ func parseStream(stdin io.Reader, stdout, stderr io.Writer, opts parseOptions) i
 }
 
 func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions) error {
-	if err := gs1.ParseInto(input, b); err != nil {
+	if err := gs1.ParseIntoWithOptions(input, b, gs1.ParseOptions{ValidateCheckDigits: opts.strict}); err != nil {
 		return err
 	}
 	if opts.regulator != nil {

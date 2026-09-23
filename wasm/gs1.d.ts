@@ -38,6 +38,8 @@ export interface GS1ParseOptions {
    * - "first": first day of the month
    */
   dayZero?: "last" | "first";
+  /** Validate GTIN check digits in AI (01) and AI (02). */
+  strict?: boolean;
 }
 
 declare global {

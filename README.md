@@ -40,6 +40,7 @@ b.ExpirationDate() // 2025-06-30 00:00:00 +0000 UTC
 - **Zero-allocation hot path.** `ParseInto` reuses a caller-owned `Barcode`;
   values are substrings of the input. See [ADR 0004](docs/adr/0004-zero-allocation-parsing.md).
 - **GTIN check digits** (GTIN-8/12/13/14), UPC-E expansion, YYMMDD date
+- **Opt-in strict GTIN check-digit validation** during parsing, including CLI and WebAssembly options.
   parsing with a configurable day-zero policy.
 - **Regulatory profiles** for LATAM pharmaceutical traceability: ANVISA,
   ANMAT, SNFA, COFEPRIS.

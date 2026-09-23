@@ -53,6 +53,15 @@ func TestParseInvalid(t *testing.T) {
 	}
 }
 
+func TestParseStrict(t *testing.T) {
+	if code, _, _ := exec(t, "", "parse", "-strict", "0104150000021126"); code != 0 {
+		t.Errorf("valid strict GTIN: exit %d", code)
+	}
+	if code, _, errOut := exec(t, "", "parse", "-strict", "0104150000021127"); code != 1 || !strings.Contains(errOut, "invalid check digit") {
+		t.Errorf("invalid strict GTIN: exit %d stderr %q", code, errOut)
+	}
+}
+
 func TestParseValidateRegulator(t *testing.T) {
 	full := "0104150000021126172506302112345ABC\x1D10LOT42X"
 	if code, _, _ := exec(t, "", "parse", "-validate", "anvisa", full); code != 0 {

@@ -439,6 +439,44 @@ func TestParseInto(t *testing.T) {
 	}
 }
 
+func TestParseWithOptionsCheckDigits(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "valid AI 01", input: "0104150000021126"},
+		{name: "valid AI 02", input: "0204150000021126"},
+		{name: "valid bare GTIN", input: "7800038041425"},
+		{name: "invalid AI 01", input: "0104150000021127", wantErr: true},
+		{name: "invalid AI 02", input: "0204150000021127", wantErr: true},
+		{name: "invalid bare GTIN", input: "7800038041426", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseWithOptions(tt.input, ParseOptions{ValidateCheckDigits: true})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseWithOptions(%q) error = %v, wantErr %t", tt.input, err, tt.wantErr)
+			}
+			if tt.wantErr && !errors.Is(err, ErrInvalidCheckDigit) {
+				t.Fatalf("ParseWithOptions(%q) error = %v, want ErrInvalidCheckDigit", tt.input, err)
+			}
+		})
+	}
+
+	if _, err := Parse("0104150000021127"); err != nil {
+		t.Fatalf("lenient Parse unexpectedly rejected invalid check digit: %v", err)
+	}
+	barcode, err := Parse("0104150000021127")
+	if err != nil {
+		t.Fatalf("lenient Parse error = %v", err)
+	}
+	if err := barcode.Validate(); !errors.Is(err, ErrInvalidCheckDigit) {
+		t.Fatalf("Barcode.Validate() error = %v, want ErrInvalidCheckDigit", err)
+	}
+}
+
 func TestParseIntoReuse(t *testing.T) {
 	inputs := []string{
 		"0104150000021126172506302112345ABC\x1D10LOT42X",
