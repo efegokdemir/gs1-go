@@ -31,9 +31,10 @@
 //
 // # Validation
 //
-// Parsing checks structure only. ValidateGTIN verifies the modulo-10 check
-// digit, ParseDate validates YYMMDD dates, and Regulator profiles check that
-// the AIs mandated by a national pharmaceutical regulator are present.
+// Parsing checks structure only by default. ParseWithOptions and Barcode.Validate
+// can enforce GTIN modulo-10 check digits, ParseDate validates YYMMDD dates,
+// and Regulator profiles check that the AIs mandated by a national
+// pharmaceutical regulator are present.
 //
 // # Trademark
 //

@@ -375,6 +375,47 @@ func TestParseConvenienceMethodsMissing(t *testing.T) {
 	}
 }
 
+func TestParseCheckDigits(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{name: "AI 01", input: "0104150000021126"},
+		{name: "AI 02", input: "0204150000021126"},
+		{name: "bare GTIN", input: "7800038041425"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := ParseWithOptions(tt.input, ParseOptions{ValidateCheckDigits: true}); err != nil {
+				t.Fatalf("ParseWithOptions() error = %v", err)
+			}
+		})
+	}
+
+	for _, input := range []string{
+		"0104150000021127",
+		"0204150000021127",
+		"7800038041426",
+	} {
+		if _, err := Parse(input); err != nil {
+			t.Fatalf("lenient Parse(%q) error = %v", input, err)
+		}
+		if _, err := ParseWithOptions(input, ParseOptions{ValidateCheckDigits: true}); !errors.Is(err, ErrInvalidCheckDigit) {
+			t.Errorf("strict Parse(%q) error = %v, want ErrInvalidCheckDigit", input, err)
+		}
+	}
+}
+
+func TestBarcodeValidateCheckDigits(t *testing.T) {
+	b, err := Parse("0104150000021127")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if !errors.Is(b.Validate(), ErrInvalidCheckDigit) {
+		t.Errorf("Validate() error = %v, want ErrInvalidCheckDigit", b.Validate())
+	}
+}
+
 func TestBarcodeReset(t *testing.T) {
 	b, err := Parse("0104150000021126172506302112345ABC\x1D10LOT42X")
 	if err != nil {

@@ -26,6 +26,8 @@ export interface GS1ParseError {
 
 /** Options for gs1.parse(). */
 export interface GS1ParseOptions {
+  /** Validate GTIN check digits for AI 01 and AI 02. */
+  strict?: boolean;
   /**
    * Date output format.
    * - "raw" (default): YYMMDD string as-is from the barcode

@@ -38,9 +38,10 @@ func parse(_ js.Value, args []js.Value) any {
 	}
 	input := args[0].String()
 
-	// Parse options from second argument: { dateFormat?: "raw"|"iso", dayZero?: "last"|"first" }
+	// Parse options from second argument: { dateFormat?: "raw"|"iso", dayZero?: "last"|"first", strict?: boolean }
 	dateFormat := "raw"
 	dayZero := gs1.DayZeroLastDay
+	strict := false
 	if len(args) >= 2 && args[1].Type() == js.TypeObject {
 		opts := args[1]
 		if df := opts.Get("dateFormat"); df.Type() == js.TypeString {
@@ -51,9 +52,12 @@ func parse(_ js.Value, args []js.Value) any {
 				dayZero = gs1.DayZeroFirstDay
 			}
 		}
+		if s := opts.Get("strict"); s.Type() == js.TypeBoolean {
+			strict = s.Bool()
+		}
 	}
 
-	b, err := gs1.Parse(input)
+	b, err := gs1.ParseWithOptions(input, gs1.ParseOptions{ValidateCheckDigits: strict})
 	if err != nil {
 		return errorResult(err.Error())
 	}

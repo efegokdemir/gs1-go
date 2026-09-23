@@ -126,6 +126,9 @@ Run `make bench` to reproduce on your hardware.
 
 Parsing checks structure only. Validate check digits explicitly:
 
+Use `ParseWithOptions` with `ValidateCheckDigits: true`, `Barcode.Validate`, or
+the CLI `-strict` flag when GTIN check digits must be enforced.
+
 ```go
 err := gs1.ValidateGTIN("04150000021126")            // nil
 check, _ := gs1.ComputeGTINCheckDigit("0415000002112") // '6'
@@ -219,6 +222,7 @@ element string as GS1-128.
 ```bash
 gs1 parse "0104150000021126172506302112345ABC"        # text table
 gs1 parse -json -iso "(01)04150000021126(17)250200"   # JSON, ISO dates
+gs1 parse -strict "$SCAN"                             # enforce GTIN check digits
 gs1 parse -validate anvisa "$SCAN"                     # exit 1 if non-compliant
 cat scans.txt | gs1 parse -json                        # one JSON object per line
 gs1 gtin 04150000021126                                # check digit

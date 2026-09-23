@@ -20,6 +20,11 @@ type Barcode struct {
 	Elements []Element // parsed AI-value pairs in scan order
 }
 
+// ParseOptions controls optional validation performed while parsing.
+type ParseOptions struct {
+	ValidateCheckDigits bool
+}
+
 // GTIN returns the GTIN value (AI 01), or "" if not present.
 func (b Barcode) GTIN() string {
 	v, _ := b.Get("01")
@@ -94,13 +99,16 @@ func (b *Barcode) Reset() {
 	b.Elements = b.Elements[:0]
 }
 
-// Parse parses a GS1 barcode string (GS1-128 or DataMatrix scanner output)
-// into a Barcode with typed elements. It handles AIM symbology identifiers
-// (e.g., ]C1, ]d2), FNC1 separators (ASCII 29), and bracket notation
-// (e.g., "(01)04150000021126(17)250630").
+// Parse parses a GS1 barcode string with the default lenient options.
 func Parse(input string) (Barcode, error) {
+	return ParseWithOptions(input, ParseOptions{})
+}
+
+// ParseWithOptions parses a GS1 barcode string into a Barcode with typed
+// elements. Optional check-digit validation can be enabled for AI 01 and 02.
+func ParseWithOptions(input string, opts ParseOptions) (Barcode, error) {
 	b := Barcode{Elements: make([]Element, 0, 8)}
-	if err := ParseInto(input, &b); err != nil {
+	if err := ParseIntoWithOptions(input, &b, opts); err != nil {
 		return Barcode{}, err
 	}
 	return b, nil
@@ -110,6 +118,12 @@ func Parse(input string) (Barcode, error) {
 // its allocated memory. Call b.Reset() before reuse to clear previous data.
 // Each goroutine must use its own Barcode.
 func ParseInto(input string, b *Barcode) error {
+	return ParseIntoWithOptions(input, b, ParseOptions{})
+}
+
+// ParseIntoWithOptions parses into an existing Barcode with optional
+// check-digit validation for AI 01 and 02.
+func ParseIntoWithOptions(input string, b *Barcode, opts ParseOptions) error {
 	if strings.TrimSpace(input) == "" {
 		return ErrEmptyInput
 	}
@@ -122,6 +136,11 @@ func ParseInto(input string, b *Barcode) error {
 	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
 	if isBareGTIN(data) {
 		padded := padGTIN(data)
+		if opts.ValidateCheckDigits {
+			if err := ValidateGTIN(padded); err != nil {
+				return fmt.Errorf("AI (01): %w", err)
+			}
+		}
 		b.Elements = append(b.Elements, Element{AI: "01", Value: padded})
 		return nil
 	}
@@ -149,6 +168,11 @@ func ParseInto(input string, b *Barcode) error {
 		if err := validateData(value, spec); err != nil {
 			return err
 		}
+		if opts.ValidateCheckDigits && (spec.AI == "01" || spec.AI == "02") {
+			if err := ValidateGTIN(value); err != nil {
+				return fmt.Errorf("AI (%s) at position %d: %w", spec.AI, pos-aiLen, err)
+			}
+		}
 
 		b.Elements = append(b.Elements, Element{AI: spec.AI, Value: value})
 	}
@@ -157,6 +181,21 @@ func ParseInto(input string, b *Barcode) error {
 		return ErrEmptyInput
 	}
 
+	return nil
+}
+
+// Validate checks the check digits of GTIN values present in AI 01 and 02.
+// Structural parsing remains lenient so callers can choose when to enforce
+// this validation.
+func (b Barcode) Validate() error {
+	for _, element := range b.Elements {
+		if element.AI != "01" && element.AI != "02" {
+			continue
+		}
+		if err := ValidateGTIN(element.Value); err != nil {
+			return fmt.Errorf("AI (%s): %w", element.AI, err)
+		}
+	}
 	return nil
 }
 
