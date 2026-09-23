@@ -261,6 +261,10 @@ business documents such as dispatch advices. See
 [ADR 0002](docs/adr/0002-parser-scope.md) for the reasoning and the GS1
 resources that cover those areas.
 
+For guidance on connecting scanner transports, storing parsed fields, and
+mapping records into dispatch advice workflows, see the
+[integration guide](docs/integration-guide.md).
+
 ## Related GS1 resources
 
 - [GS1 General Specifications](https://www.gs1.org/standards/barcodes-epcrfid-id-keys/gs1-general-specifications)
