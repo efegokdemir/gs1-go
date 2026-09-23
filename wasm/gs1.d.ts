@@ -4,19 +4,6 @@ export interface GS1Element {
   value: string;
 }
 
-/** Carrier identified by an AIM symbology prefix. */
-export enum GS1Symbology {
-  Unknown = 0,
-  GS1128 = 1,
-  DataMatrix = 2,
-  QR = 3,
-  EANUPC = 4,
-  ITF14 = 5,
-  DataBar = 6,
-  Composite = 7,
-  DotCode = 8,
-}
-
 /** Result of parsing a GS1 barcode string. */
 export interface GS1ParseResult {
   raw: string;
@@ -24,7 +11,8 @@ export interface GS1ParseResult {
   gtin: string;
   lot: string;
   serial: string;
-  symbology?: string;
+  /** Carrier name, or "unknown" when no recognized AIM prefix was present. */
+  symbology: string;
   /** Expiration date (AI 17). Raw YYMMDD or ISO 8601 depending on dateFormat. */
   expirationDate?: string;
   /** Production date (AI 11). Raw YYMMDD or ISO 8601 depending on dateFormat. */

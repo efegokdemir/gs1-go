@@ -20,7 +20,7 @@ type parseResultJSON struct {
 	GTIN           string        `json:"gtin"`
 	Lot            string        `json:"lot"`
 	Serial         string        `json:"serial"`
-	Symbology      string        `json:"symbology,omitempty"`
+	Symbology      string        `json:"symbology"`
 	ExpirationDate string        `json:"expirationDate,omitempty"`
 	ProductionDate string        `json:"productionDate,omitempty"`
 	BestBeforeDate string        `json:"bestBeforeDate,omitempty"`

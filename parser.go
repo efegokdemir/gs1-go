@@ -68,7 +68,9 @@ type Barcode struct {
 	Symbology Symbology // detected carrier, when an AIM prefix was present
 }
 
-// ParseOptions controls ambiguous carrier handling.
+// ParseOptions controls ambiguous carrier handling. AssumeBareGTIN8 takes
+// precedence over AI interpretation for unprefixed eight-digit numeric input;
+// parsing does not validate the GTIN check digit.
 type ParseOptions struct {
 	// AssumeBareGTIN8 treats an unprefixed eight-digit numeric input as GTIN-8.
 	AssumeBareGTIN8 bool
@@ -184,14 +186,6 @@ func ParseIntoWithOptions(input string, b *Barcode, options ParseOptions) error 
 	data = stripBracketNotation(data)
 
 	b.Raw = input
-	if len(data) == 8 && isDigits(data) && !options.AssumeBareGTIN8 {
-		if _, knownAI := aiTable[data[:2]]; knownAI {
-			// Preserve unprefixed AI values such as (11) production dates.
-		} else {
-			return fmt.Errorf("%w: bare GTIN-8 requires ParseOptions.AssumeBareGTIN8 or an AIM prefix", ErrInvalidData)
-		}
-	}
-
 	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
 	if isBareGTIN(data, options.AssumeBareGTIN8) {
 		padded := padGTIN(data)
@@ -272,8 +266,6 @@ func symbologyForAIM(code byte) Symbology {
 		return SymEANUPC
 	case 'I':
 		return SymITF14
-	case 'X':
-		return SymUnknown
 	default:
 		return SymUnknown
 	}

@@ -90,7 +90,7 @@ type element struct {
 type parseOutput struct {
 	Raw       string    `json:"raw"`
 	Elements  []element `json:"elements"`
-	Symbology string    `json:"symbology,omitempty"`
+	Symbology string    `json:"symbology"`
 	Error     string    `json:"error,omitempty"`
 }
 

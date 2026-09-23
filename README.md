@@ -210,7 +210,9 @@ same information. Requests for additional AIs are welcome; see
 | AIM prefix, DataMatrix | `]d2…` (also `]d1`) |
 | AIM prefix, GS1-128 | `]C1…` |
 | AIM prefix, QR / DotCode / composite | `]Q3…`, `]J1…`, `]e0…` |
+| AIM prefix, EAN/UPC or ITF-14 | `]E0`–`]E4`, `]I0`–`]I2` |
 | Bare GTIN (EAN-13, UPC-A, GTIN-14) | `7800038041425` → AI 01, zero-padded to 14 |
+| Bare GTIN-8 | Requires `ParseOptions{AssumeBareGTIN8: true}` |
 
 GS1 DataBar needs no special handling: scanners decode it to the same
 element string as GS1-128.
