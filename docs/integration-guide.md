@@ -125,6 +125,11 @@ SSCC (AI 00)            outer logistic unit
        └─ quantity (37)  number of contained items
 ```
 
+For a case-level GTIN-14, the indicator digit is prepended to the GTIN-13
+item data before the check digit is recomputed. `Barcode.GTIN()` reads AI 01;
+read AI 02 explicitly with `Barcode.Get("02")` when the scan describes
+contained trade items.
+
 The library parses these identifiers; it does not infer containment. Your
 receiving or warehouse service should validate that a child scan is attached
 to the expected parent and should retain the scan timestamp and source.
