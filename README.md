@@ -86,6 +86,17 @@ for _, e := range b.Elements {
 v, ok := b.Get("17") // generic lookup, first occurrence
 ```
 
+Weight AIs expose their implied decimal point through typed measurements. The
+raw and scaled forms remain available when an exact decimal representation is
+needed:
+
+```go
+weight, ok := b.NetWeightKg() // AI 310n
+if ok {
+    fmt.Printf("%.2f %s (raw %s)\n", weight.Value, weight.Unit, weight.Raw)
+}
+```
+
 Errors wrap sentinel values so callers can branch with `errors.Is`:
 
 | Sentinel | Meaning |
