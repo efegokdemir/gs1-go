@@ -38,7 +38,7 @@ if err := scanner.Err(); err != nil {
 }
 ```
 
-The parser normalises common scanner noise, including CR/LF suffixes, BOMs,
+The parser normalizes common scanner noise, including CR/LF suffixes, BOMs,
 NUL bytes, and FNC1 separators. Do not strip the raw scan before parsing if
 the original element string is needed for audit or reprocessing.
 
@@ -96,7 +96,7 @@ limits, structured logging, and an idempotency key before persisting data.
 
 ## Storage and filtering
 
-Store the original element string alongside normalised fields. A practical
+Store the original element string alongside normalized fields. A practical
 scan record contains:
 
 | Field | Source | Storage guidance |
@@ -112,7 +112,7 @@ scan record contains:
 
 Use `Barcode.Get` or the typed accessors for the values required by the
 application. Keep unknown or newly supported AIs in the raw string and
-element list rather than silently discarding them. Index the normalised
+element list rather than silently discarding them. Index the normalized
 columns used for operational filters such as GTIN, lot, expiry, and SSCC.
 
 ## Logistic hierarchy and dispatch advice
