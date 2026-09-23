@@ -81,6 +81,43 @@ func TestComputeGTINCheckDigit(t *testing.T) {
 	}
 }
 
+func TestIdentifierBuilders(t *testing.T) {
+	sscc, err := NewSSCC('3', "7801234", "000000009")
+	if err != nil {
+		t.Fatalf("NewSSCC() error = %v", err)
+	}
+	if sscc != "378012340000000095" {
+		t.Fatalf("NewSSCC() = %q, want %q", sscc, "378012340000000095")
+	}
+	if gotExt, gotPrefix, gotSerial, err := SplitSSCC(sscc, 7); err != nil || gotExt != '3' || gotPrefix != "7801234" || gotSerial != "000000009" {
+		t.Fatalf("SplitSSCC() = %q, %q, %q, %v", gotExt, gotPrefix, gotSerial, err)
+	}
+
+	gtin13, err := NewGTIN13("7801234", "00005")
+	if err != nil || gtin13 != "7801234000056" {
+		t.Fatalf("NewGTIN13() = %q, %v", gtin13, err)
+	}
+	gtin14, err := NewGTIN14('1', gtin13)
+	if err != nil || gtin14 != "17801234000053" {
+		t.Fatalf("NewGTIN14() = %q, %v", gtin14, err)
+	}
+}
+
+func TestIdentifierBuildersRejectInvalidInput(t *testing.T) {
+	if _, err := NewSSCC('x', "7801234", "000000009"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("NewSSCC() error = %v, want ErrInvalidData", err)
+	}
+	if _, err := NewSSCC('3', "7801234", "9"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("NewSSCC() short components error = %v, want ErrInvalidData", err)
+	}
+	if _, err := NewGTIN14('1', "1234567890123"); !errors.Is(err, ErrInvalidCheckDigit) {
+		t.Errorf("NewGTIN14() error = %v, want ErrInvalidCheckDigit", err)
+	}
+	if err := ValidateCheckDigit("378012340000000097"); !errors.Is(err, ErrInvalidCheckDigit) {
+		t.Errorf("ValidateCheckDigit() error = %v, want ErrInvalidCheckDigit", err)
+	}
+}
+
 func TestExpandUPCE(t *testing.T) {
 	tests := []struct {
 		name    string
