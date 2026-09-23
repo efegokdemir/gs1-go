@@ -44,6 +44,18 @@ func (b Barcode) SSCC() string {
 	return v
 }
 
+// GDTI returns the document type identifier (AI 253), or "" if absent.
+func (b Barcode) GDTI() string {
+	v, _ := b.Get("253")
+	return v
+}
+
+// GRAI returns the returnable asset identifier (AI 8003), or "" if absent.
+func (b Barcode) GRAI() string {
+	v, _ := b.Get("8003")
+	return v
+}
+
 // Count returns the item count (AI 30), or "" if not present.
 func (b Barcode) Count() string {
 	v, _ := b.Get("30")
@@ -226,6 +238,22 @@ func validateData(value string, spec aiSpec) error {
 				ErrInvalidData, spec.AI, value)
 		}
 		return nil
+	}
+	if spec.NumericPrefixLen > 0 {
+		if len(value) < spec.NumericPrefixLen {
+			return fmt.Errorf("%w: AI (%s) needs at least %d characters, got %d",
+				ErrInvalidData, spec.AI, spec.NumericPrefixLen, len(value))
+		}
+		if spec.FirstChar != 0 && value[0] != spec.FirstChar {
+			return fmt.Errorf("%w: AI (%s) must start with %q, got %q",
+				ErrInvalidData, spec.AI, spec.FirstChar, value[0])
+		}
+		for i := 0; i < spec.NumericPrefixLen; i++ {
+			if value[i] < '0' || value[i] > '9' {
+				return fmt.Errorf("%w: AI (%s) expects a numeric prefix, got %q",
+					ErrInvalidData, spec.AI, value)
+			}
+		}
 	}
 	if spec.DataType != dataNumeric {
 		return nil

@@ -97,6 +97,48 @@ func TestParse(t *testing.T) {
 			wantCount: 1,
 			wantAIs:   []string{"240"},
 		},
+		{
+			name:      "GDTI",
+			input:     "2531234567890123DOC",
+			wantCount: 1,
+			wantAIs:   []string{"253"},
+		},
+		{
+			name:      "GINC",
+			input:     "401GINC123",
+			wantCount: 1,
+			wantAIs:   []string{"401"},
+		},
+		{
+			name:      "GRAI with serial",
+			input:     "800301234567890123SERIAL",
+			wantCount: 1,
+			wantAIs:   []string{"8003"},
+		},
+		{
+			name:      "GRAI without serial",
+			input:     "800301234567890123",
+			wantCount: 1,
+			wantAIs:   []string{"8003"},
+		},
+		{
+			name:      "GIAI",
+			input:     "8004ASSET123",
+			wantCount: 1,
+			wantAIs:   []string{"8004"},
+		},
+		{
+			name:      "GSRN provider",
+			input:     "8017123456789012345678",
+			wantCount: 1,
+			wantAIs:   []string{"8017"},
+		},
+		{
+			name:      "GSRN recipient",
+			input:     "8018123456789012345678",
+			wantCount: 1,
+			wantAIs:   []string{"8018"},
+		},
 		// 4-digit AI (weight)
 		{
 			name:      "AI 3102 net weight kg",
@@ -294,6 +336,16 @@ func TestParse(t *testing.T) {
 			wantErr: ErrInvalidData,
 		},
 		{
+			name:    "GRAI must start with zero",
+			input:   "80031234567890123",
+			wantErr: ErrInvalidData,
+		},
+		{
+			name:    "GDTI numeric prefix is required",
+			input:   "25312345678901A",
+			wantErr: ErrInvalidData,
+		},
+		{
 			name:    "variable data exceeds max",
 			input:   "10AAAAABBBBBCCCCCDDDDDE",
 			wantErr: ErrInvalidData,
@@ -401,6 +453,19 @@ func TestParseConvenienceMethodsMissing(t *testing.T) {
 	_, err = b.ExpirationDate()
 	if err == nil {
 		t.Error("ExpirationDate() should error when AI 17 is missing")
+	}
+}
+
+func TestIdentifierConvenienceMethods(t *testing.T) {
+	b, err := Parse("2531234567890123DOC\x1D800301234567890123SERIAL")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := b.GDTI(); got != "1234567890123DOC" {
+		t.Errorf("GDTI() = %q, want %q", got, "1234567890123DOC")
+	}
+	if got := b.GRAI(); got != "01234567890123SERIAL" {
+		t.Errorf("GRAI() = %q, want %q", got, "01234567890123SERIAL")
 	}
 }
 
