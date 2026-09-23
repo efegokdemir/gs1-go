@@ -360,6 +360,30 @@ func TestSymbologyAndRetailCarriers(t *testing.T) {
 	}
 }
 
+func TestEightDigitInputsStillUseAIParsing(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "AI 240", input: "24012345", want: "12345"},
+		{name: "AI 241", input: "24112345", want: "12345"},
+		{name: "AI 713", input: "71312345", want: "12345"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := Parse(tt.input)
+			if err != nil {
+				t.Fatalf("Parse(%q) returned error: %v", tt.input, err)
+			}
+			if got, ok := b.Get(tt.input[:3]); !ok || got != tt.want {
+				t.Fatalf("Parse(%q) value = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseConvenienceMethods(t *testing.T) {
 	input := "0104150000021126" + "17250630" + "2112345ABC\x1D" + "10LOT42X"
 	b, err := Parse(input)
