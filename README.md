@@ -132,6 +132,13 @@ check, _ := gs1.ComputeGTINCheckDigit("0415000002112") // '6'
 upca, _ := gs1.ExpandUPCE("012345")                    // 12-digit UPC-A
 ```
 
+## Association rules
+
+`Parse` remains lenient for scanner workflows. Use `Barcode.Validate()` or
+`ParseWithOptions` with `ValidateAssociations: true` to enforce required pairs
+and exclusions such as `(02)` with `(37)`, weights with a GTIN, and mutually
+exclusive identifier variants.
+
 ### Dates
 
 GS1 dates are `YYMMDD` with years mapped to 2000–2099. A day of `00` denotes

@@ -20,6 +20,11 @@ type Barcode struct {
 	Elements []Element // parsed AI-value pairs in scan order
 }
 
+// ParseOptions controls optional validation performed while parsing.
+type ParseOptions struct {
+	ValidateAssociations bool
+}
+
 // GTIN returns the GTIN value (AI 01), or "" if not present.
 func (b Barcode) GTIN() string {
 	v, _ := b.Get("01")
@@ -99,8 +104,13 @@ func (b *Barcode) Reset() {
 // (e.g., ]C1, ]d2), FNC1 separators (ASCII 29), and bracket notation
 // (e.g., "(01)04150000021126(17)250630").
 func Parse(input string) (Barcode, error) {
+	return ParseWithOptions(input, ParseOptions{})
+}
+
+// ParseWithOptions parses a GS1 barcode with optional AI association rules.
+func ParseWithOptions(input string, opts ParseOptions) (Barcode, error) {
 	b := Barcode{Elements: make([]Element, 0, 8)}
-	if err := ParseInto(input, &b); err != nil {
+	if err := ParseIntoWithOptions(input, &b, opts); err != nil {
 		return Barcode{}, err
 	}
 	return b, nil
@@ -110,6 +120,12 @@ func Parse(input string) (Barcode, error) {
 // its allocated memory. Call b.Reset() before reuse to clear previous data.
 // Each goroutine must use its own Barcode.
 func ParseInto(input string, b *Barcode) error {
+	return ParseIntoWithOptions(input, b, ParseOptions{})
+}
+
+// ParseIntoWithOptions parses into an existing Barcode with optional AI
+// association validation.
+func ParseIntoWithOptions(input string, b *Barcode, opts ParseOptions) error {
 	if strings.TrimSpace(input) == "" {
 		return ErrEmptyInput
 	}
@@ -156,9 +172,15 @@ func ParseInto(input string, b *Barcode) error {
 	if len(b.Elements) == 0 {
 		return ErrEmptyInput
 	}
+	if opts.ValidateAssociations {
+		return b.ValidateAssociations()
+	}
 
 	return nil
 }
+
+// Validate checks the Application Identifier association rules.
+func (b Barcode) Validate() error { return b.ValidateAssociations() }
 
 // skipPrefix skips leading FNC1 and AIM symbology identifiers.
 func skipPrefix(data string) int {
