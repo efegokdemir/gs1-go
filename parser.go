@@ -38,6 +38,29 @@ const (
 	SymDotCode
 )
 
+func (s Symbology) String() string {
+	switch s {
+	case SymGS1128:
+		return "GS1-128"
+	case SymDataMatrix:
+		return "Data Matrix"
+	case SymQR:
+		return "QR Code"
+	case SymEANUPC:
+		return "EAN/UPC"
+	case SymITF14:
+		return "ITF-14"
+	case SymDataBar:
+		return "DataBar"
+	case SymComposite:
+		return "Composite"
+	case SymDotCode:
+		return "DotCode"
+	default:
+		return "unknown"
+	}
+}
+
 // Barcode represents a fully parsed GS1 barcode (GS1-128 or DataMatrix).
 type Barcode struct {
 	Raw       string    // original input string
@@ -250,7 +273,7 @@ func symbologyForAIM(code byte) Symbology {
 	case 'I':
 		return SymITF14
 	case 'X':
-		return SymDataBar
+		return SymUnknown
 	default:
 		return SymUnknown
 	}
@@ -277,6 +300,13 @@ func parseCarrierPayload(data string, sym Symbology, code byte) (string, bool, e
 		return "", false, fmt.Errorf("%w: symbology payload must be numeric", ErrInvalidData)
 	}
 	if sym == SymITF14 {
+		if code == '2' && len(data) == 13 {
+			check, err := ComputeGTINCheckDigit(data)
+			if err != nil {
+				return "", false, err
+			}
+			data += string(check)
+		}
 		return fixedCarrierPayload(data, 14, "ITF-14")
 	}
 	switch code {
@@ -294,7 +324,7 @@ func parseCarrierPayload(data string, sym Symbology, code byte) (string, bool, e
 	case '1', '2':
 		return variableCarrierPayload(data)
 	default:
-		return "", false, nil
+		return "", false, fmt.Errorf("%w: unsupported EAN/UPC symbology ]E%c", ErrInvalidData, code)
 	}
 }
 

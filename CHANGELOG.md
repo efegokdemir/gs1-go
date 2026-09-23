@@ -7,6 +7,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Made unsupported carrier variants fail explicitly and exposed detected
+  symbology names in CLI and WASM results.
+
 - Detect AIM symbology carriers and support EAN/UPC, ITF-14, and opt-in bare GTIN-8 parsing.
 
 ## [0.1.0] - 2026-09-22

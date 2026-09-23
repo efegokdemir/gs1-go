@@ -335,6 +335,8 @@ func TestSymbologyAndRetailCarriers(t *testing.T) {
 		{name: "EAN-8", input: "]E496385074", wantSym: SymEANUPC, wantGTIN: "00000096385074"},
 		{name: "UPC-E", input: "]E000123457", wantSym: SymEANUPC, wantGTIN: "00001234000057"},
 		{name: "ITF-14", input: "]I012345678901231", wantSym: SymITF14, wantGTIN: "12345678901231"},
+		{name: "ITF-14 stripped check", input: "]I20123456789012", wantSym: SymITF14, wantGTIN: "01234567890128"},
+		{name: "unsupported EAN/UPC variant", input: "]E3401234567890112", wantSym: SymEANUPC, wantErr: true},
 		{name: "bare EAN-8 rejected", input: "89312345", wantSym: SymUnknown, wantErr: true},
 		{name: "bare EAN-8 opt-in", input: "89312345", options: ParseOptions{AssumeBareGTIN8: true}, wantSym: SymUnknown, wantGTIN: "00000089312345"},
 	}

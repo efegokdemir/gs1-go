@@ -24,6 +24,7 @@ export interface GS1ParseResult {
   gtin: string;
   lot: string;
   serial: string;
+  symbology?: string;
   /** Expiration date (AI 17). Raw YYMMDD or ISO 8601 depending on dateFormat. */
   expirationDate?: string;
   /** Production date (AI 11). Raw YYMMDD or ISO 8601 depending on dateFormat. */

@@ -20,6 +20,7 @@ type parseResultJSON struct {
 	GTIN           string        `json:"gtin"`
 	Lot            string        `json:"lot"`
 	Serial         string        `json:"serial"`
+	Symbology      string        `json:"symbology,omitempty"`
 	ExpirationDate string        `json:"expirationDate,omitempty"`
 	ProductionDate string        `json:"productionDate,omitempty"`
 	BestBeforeDate string        `json:"bestBeforeDate,omitempty"`
@@ -59,11 +60,12 @@ func parse(_ js.Value, args []js.Value) any {
 	}
 
 	result := parseResultJSON{
-		Raw:      b.Raw,
-		Elements: make([]elementJSON, len(b.Elements)),
-		GTIN:     b.GTIN(),
-		Lot:      b.Lot(),
-		Serial:   b.SerialNumber(),
+		Raw:       b.Raw,
+		Elements:  make([]elementJSON, len(b.Elements)),
+		GTIN:      b.GTIN(),
+		Lot:       b.Lot(),
+		Serial:    b.SerialNumber(),
+		Symbology: b.Symbology.String(),
 	}
 	for i, e := range b.Elements {
 		result.Elements[i] = elementJSON{AI: e.AI, Value: e.Value}

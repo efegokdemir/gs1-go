@@ -88,9 +88,10 @@ type element struct {
 }
 
 type parseOutput struct {
-	Raw      string    `json:"raw"`
-	Elements []element `json:"elements"`
-	Error    string    `json:"error,omitempty"`
+	Raw       string    `json:"raw"`
+	Elements  []element `json:"elements"`
+	Symbology string    `json:"symbology,omitempty"`
+	Error     string    `json:"error,omitempty"`
 }
 
 type parseOptions struct {
@@ -188,7 +189,7 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 			return err
 		}
 	}
-	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements))}
+	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements)), Symbology: b.Symbology.String()}
 	for _, e := range b.Elements {
 		el := element{AI: e.AI, Value: e.Value}
 		if ai, ok := gs1.LookupAI(e.AI); ok {
