@@ -239,21 +239,8 @@ func validateData(value string, spec aiSpec) error {
 		}
 		return nil
 	}
-	if spec.NumericPrefixLen > 0 {
-		if len(value) < spec.NumericPrefixLen {
-			return fmt.Errorf("%w: AI (%s) needs at least %d characters, got %d",
-				ErrInvalidData, spec.AI, spec.NumericPrefixLen, len(value))
-		}
-		if spec.FirstChar != 0 && value[0] != spec.FirstChar {
-			return fmt.Errorf("%w: AI (%s) must start with %q, got %q",
-				ErrInvalidData, spec.AI, spec.FirstChar, value[0])
-		}
-		for i := 0; i < spec.NumericPrefixLen; i++ {
-			if value[i] < '0' || value[i] > '9' {
-				return fmt.Errorf("%w: AI (%s) expects a numeric prefix, got %q",
-					ErrInvalidData, spec.AI, value)
-			}
-		}
+	if err := validateNumericPrefix(value, spec); err != nil {
+		return err
 	}
 	if spec.DataType != dataNumeric {
 		return nil
@@ -261,6 +248,27 @@ func validateData(value string, spec aiSpec) error {
 	for i := 0; i < len(value); i++ {
 		if value[i] < '0' || value[i] > '9' {
 			return fmt.Errorf("%w: AI (%s) expects numeric data, got %q",
+				ErrInvalidData, spec.AI, value)
+		}
+	}
+	return nil
+}
+
+func validateNumericPrefix(value string, spec aiSpec) error {
+	if spec.NumericPrefixLen == 0 {
+		return nil
+	}
+	if len(value) < spec.NumericPrefixLen {
+		return fmt.Errorf("%w: AI (%s) needs at least %d characters, got %d",
+			ErrInvalidData, spec.AI, spec.NumericPrefixLen, len(value))
+	}
+	if spec.FirstChar != 0 && value[0] != spec.FirstChar {
+		return fmt.Errorf("%w: AI (%s) must start with %q, got %q",
+			ErrInvalidData, spec.AI, spec.FirstChar, value[0])
+	}
+	for i := 0; i < spec.NumericPrefixLen; i++ {
+		if value[i] < '0' || value[i] > '9' {
+			return fmt.Errorf("%w: AI (%s) expects a numeric prefix, got %q",
 				ErrInvalidData, spec.AI, value)
 		}
 	}
@@ -336,6 +344,7 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 	mid := (from + to) / 2
 	bestPos := -1
 	bestDist := len(data)
+	bestAILen := 0
 	for i := from; i < to; i++ {
 		spec, aiLen, ok := lookupAIAt(data, i)
 		if !ok {
@@ -351,9 +360,13 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 		if dist < 0 {
 			dist = -dist
 		}
-		if bestPos < 0 || dist < bestDist || (dist == bestDist && i > bestPos) {
+		preferShortAI := aiLen == 2 && bestAILen > 2
+		preferCandidate := bestAILen == 0 || preferShortAI ||
+			(aiLen == bestAILen && (dist < bestDist || (dist == bestDist && i > bestPos)))
+		if preferCandidate {
 			bestPos = i
 			bestDist = dist
+			bestAILen = aiLen
 		}
 	}
 	if bestPos >= 0 {

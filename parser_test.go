@@ -337,12 +337,12 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:    "GRAI must start with zero",
-			input:   "80031234567890123",
+			input:   "80031234567890123X",
 			wantErr: ErrInvalidData,
 		},
 		{
 			name:    "GDTI numeric prefix is required",
-			input:   "25312345678901A",
+			input:   "253123456789012X",
 			wantErr: ErrInvalidData,
 		},
 		{
@@ -398,6 +398,21 @@ func TestParse(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestMissingFNC1RecoveryKeepsTwoDigitBoundary(t *testing.T) {
+	for _, input := range []string{
+		"10PO401ABCDEFGHIJKLMN21SERIAL",
+		"10L2401ABCDEFGHIJKLMN21SERIAL",
+	} {
+		b, err := Parse(input)
+		if err != nil {
+			t.Fatalf("Parse(%q) error = %v", input, err)
+		}
+		if got := b.Elements; len(got) != 2 || got[0].AI != "10" || got[1].AI != "21" {
+			t.Errorf("Parse(%q) elements = %+v, want AI 10 followed by AI 21", input, got)
+		}
 	}
 }
 

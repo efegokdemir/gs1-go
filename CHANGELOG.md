@@ -7,6 +7,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Identification AIs 253, 401, 8003, 8004, 8017 and 8018, with `GDTI()` and
+  `GRAI()` accessors.
+
 ### Fixed
 
 - Improved missing-FNC1 recovery for mixed-format identification AIs.
