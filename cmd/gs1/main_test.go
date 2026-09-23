@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	gs1 "github.com/galenzo17/gs1-go"
 )
 
 func exec(t *testing.T, stdin string, args ...string) (code int, stdout, stderr string) {
@@ -40,6 +42,23 @@ func TestParseJSONWithISODates(t *testing.T) {
 	}
 	if got.Elements[1].Date != "2025-02-28" {
 		t.Errorf("date = %q, want 2025-02-28", got.Elements[1].Date)
+	}
+}
+
+func TestParseDueDateWarning(t *testing.T) {
+	code, out, errOut := exec(t, "", "parse", "-json", "12250630")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	var got parseOutput
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+	if len(got.Warnings) != 1 || got.Warnings[0].Code != gs1.WarnDueDateAsExpiry {
+		t.Errorf("warnings = %+v", got.Warnings)
+	}
+	if !strings.Contains(errOut, "AI (12) is a due date") {
+		t.Errorf("stderr = %q", errOut)
 	}
 }
 

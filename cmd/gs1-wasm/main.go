@@ -20,6 +20,8 @@ type parseResultJSON struct {
 	GTIN           string        `json:"gtin"`
 	Lot            string        `json:"lot"`
 	Serial         string        `json:"serial"`
+	DueDate        string        `json:"dueDate,omitempty"`
+	Warnings       []gs1.Warning `json:"warnings,omitempty"`
 	ExpirationDate string        `json:"expirationDate,omitempty"`
 	ProductionDate string        `json:"productionDate,omitempty"`
 	BestBeforeDate string        `json:"bestBeforeDate,omitempty"`
@@ -30,6 +32,7 @@ var dateAIs = map[string]string{
 	"17": "expirationDate",
 	"11": "productionDate",
 	"15": "bestBeforeDate",
+	"12": "dueDate",
 }
 
 func parse(_ js.Value, args []js.Value) any {
@@ -58,12 +61,15 @@ func parse(_ js.Value, args []js.Value) any {
 		return errorResult(err.Error())
 	}
 
+	dueDate, _ := b.Get("12")
 	result := parseResultJSON{
 		Raw:      b.Raw,
 		Elements: make([]elementJSON, len(b.Elements)),
 		GTIN:     b.GTIN(),
 		Lot:      b.Lot(),
 		Serial:   b.SerialNumber(),
+		DueDate:  dueDate,
+		Warnings: b.Warnings(),
 	}
 	for i, e := range b.Elements {
 		result.Elements[i] = elementJSON{AI: e.AI, Value: e.Value}
@@ -86,6 +92,8 @@ func parse(_ js.Value, args []js.Value) any {
 			dateStr = v
 		}
 		switch field {
+		case "dueDate":
+			result.DueDate = dateStr
 		case "expirationDate":
 			result.ExpirationDate = dateStr
 		case "productionDate":

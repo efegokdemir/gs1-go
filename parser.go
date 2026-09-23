@@ -14,10 +14,30 @@ type Element struct {
 	Value string // raw data value
 }
 
+// Warning identifies a non-fatal advisory found while parsing a barcode.
+type Warning struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// WarnDueDateAsExpiry warns that AI 12 is a due date, not an expiry date.
+const WarnDueDateAsExpiry = "due_date_as_expiry"
+
+var dueDateAsExpiryWarning = Warning{
+	Code:    WarnDueDateAsExpiry,
+	Message: "AI (12) is a due date; use AI (17) for expiration dates",
+}
+
 // Barcode represents a fully parsed GS1 barcode (GS1-128 or DataMatrix).
 type Barcode struct {
 	Raw      string    // original input string
 	Elements []Element // parsed AI-value pairs in scan order
+	warnings []Warning
+}
+
+// Warnings returns non-fatal advisories found while parsing the barcode.
+func (b Barcode) Warnings() []Warning {
+	return append([]Warning(nil), b.warnings...)
 }
 
 // GTIN returns the GTIN value (AI 01), or "" if not present.
@@ -77,6 +97,15 @@ func (b Barcode) BestBeforeDate() (time.Time, error) {
 	return ParseDate(v)
 }
 
+// DueDate returns the parsed due date (AI 12).
+func (b Barcode) DueDate() (time.Time, error) {
+	v, ok := b.Get("12")
+	if !ok {
+		return time.Time{}, fmt.Errorf("%w: AI (12) not present", ErrInvalidData)
+	}
+	return ParseDate(v)
+}
+
 // Get returns the value for the given AI code and whether it was found.
 // If the AI appears multiple times, the first occurrence is returned.
 func (b Barcode) Get(ai string) (string, bool) {
@@ -92,6 +121,7 @@ func (b Barcode) Get(ai string) (string, bool) {
 func (b *Barcode) Reset() {
 	b.Raw = ""
 	b.Elements = b.Elements[:0]
+	b.warnings = b.warnings[:0]
 }
 
 // Parse parses a GS1 barcode string (GS1-128 or DataMatrix scanner output)
@@ -118,6 +148,7 @@ func ParseInto(input string, b *Barcode) error {
 	data = stripBracketNotation(data)
 
 	b.Raw = input
+	b.warnings = b.warnings[:0]
 
 	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
 	if isBareGTIN(data) {
@@ -155,6 +186,11 @@ func ParseInto(input string, b *Barcode) error {
 
 	if len(b.Elements) == 0 {
 		return ErrEmptyInput
+	}
+	if _, hasDueDate := b.Get("12"); hasDueDate {
+		if _, hasExpirationDate := b.Get("17"); !hasExpirationDate {
+			b.warnings = append(b.warnings, dueDateAsExpiryWarning)
+		}
 	}
 
 	return nil

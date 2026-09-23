@@ -88,9 +88,11 @@ type element struct {
 }
 
 type parseOutput struct {
-	Raw      string    `json:"raw"`
-	Elements []element `json:"elements"`
-	Error    string    `json:"error,omitempty"`
+	Raw      string        `json:"raw"`
+	Elements []element     `json:"elements"`
+	DueDate  string        `json:"dueDate,omitempty"`
+	Warnings []gs1.Warning `json:"warnings,omitempty"`
+	Error    string        `json:"error,omitempty"`
 }
 
 type parseOptions struct {
@@ -131,7 +133,7 @@ func runParse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return parseStream(stdin, stdout, stderr, opts)
 	case 1:
 		var b gs1.Barcode
-		if err := parseOne(fs.Arg(0), &b, stdout, opts); err != nil {
+		if err := parseOne(fs.Arg(0), &b, stdout, stderr, opts); err != nil {
 			fmt.Fprintln(stderr, "gs1:", err)
 			return 1
 		}
@@ -160,7 +162,7 @@ func parseStream(stdin io.Reader, stdout, stderr io.Writer, opts parseOptions) i
 		}
 		first = false
 		b.Reset()
-		if err := parseOne(line, &b, stdout, opts); err != nil {
+		if err := parseOne(line, &b, stdout, stderr, opts); err != nil {
 			failed = true
 			if opts.json {
 				_ = json.NewEncoder(stdout).Encode(parseOutput{Raw: line, Error: err.Error()})
@@ -179,7 +181,7 @@ func parseStream(stdin io.Reader, stdout, stderr io.Writer, opts parseOptions) i
 	return 0
 }
 
-func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions) error {
+func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parseOptions) error {
 	if err := gs1.ParseInto(input, b); err != nil {
 		return err
 	}
@@ -188,7 +190,12 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 			return err
 		}
 	}
-	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements))}
+	dueDate, _ := b.Get("12")
+	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements)), DueDate: dueDate, Warnings: b.Warnings()}
+	for _, warning := range b.Warnings() {
+		fmt.Fprintf(stderr, "gs1: warning: %s\n", warning.Message)
+	}
+	applyScalarDateFormat(&out, *b, opts.iso)
 	for _, e := range b.Elements {
 		el := element{AI: e.AI, Value: e.Value}
 		if ai, ok := gs1.LookupAI(e.AI); ok {
@@ -216,9 +223,18 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 	return nil
 }
 
+func applyScalarDateFormat(out *parseOutput, b gs1.Barcode, iso bool) {
+	if !iso {
+		return
+	}
+	if t, err := b.DueDate(); err == nil {
+		out.DueDate = t.Format("2006-01-02")
+	}
+}
+
 func isDateAI(ai string) bool {
 	switch ai {
-	case "11", "13", "15", "17":
+	case "11", "12", "13", "15", "17":
 		return true
 	}
 	return false

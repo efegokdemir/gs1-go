@@ -11,6 +11,10 @@ export interface GS1ParseResult {
   gtin: string;
   lot: string;
   serial: string;
+  /** Due date (AI 12). Raw YYMMDD or ISO 8601 depending on dateFormat. */
+  dueDate?: string;
+  /** Non-fatal parsing advisories. */
+  warnings?: GS1Warning[];
   /** Expiration date (AI 17). Raw YYMMDD or ISO 8601 depending on dateFormat. */
   expirationDate?: string;
   /** Production date (AI 11). Raw YYMMDD or ISO 8601 depending on dateFormat. */
