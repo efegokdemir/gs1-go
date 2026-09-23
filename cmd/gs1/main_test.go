@@ -58,7 +58,7 @@ func TestParseStrictAssociations(t *testing.T) {
 	if code != 1 || !strings.Contains(errOut, "requires AI (37)") {
 		t.Errorf("strict association exit %d stderr %q", code, errOut)
 	}
-	if code, _, _ := exec(t, "", "parse", "-strict", "02041500000211263720"); code != 0 {
+	if code, _, _ := exec(t, "", "parse", "-strict", "0001234567890123456702041500000211263720"); code != 0 {
 		t.Errorf("valid strict association exit %d, want 0", code)
 	}
 }

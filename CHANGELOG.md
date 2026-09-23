@@ -7,6 +7,10 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Corrected strict AI association rules to match the GS1 Syntax Dictionary.
+
 ## [0.1.0] - 2026-09-22
 
 First release as a standalone module. The code was extracted from the `gs1`

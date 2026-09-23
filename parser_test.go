@@ -384,13 +384,12 @@ func TestValidateAssociations(t *testing.T) {
 	}{
 		{name: "01 excludes 02", events: []Element{{AI: "01"}, {AI: "02"}}, want: "AI (01) excludes AI (02)"},
 		{name: "02 requires 37", events: []Element{{AI: "02"}}, want: "AI (02) requires AI (37)"},
-		{name: "37 requires 02", events: []Element{{AI: "37"}}, want: "AI (37) requires AI (02)"},
-		{name: "21 requires 01", events: []Element{{AI: "21"}}, want: "AI (21) requires AI (01)"},
+		{name: "37 requires logistic pair", events: []Element{{AI: "37"}}, want: "AI (37) requires AI (00) with AI (02) or AI (8026)"},
+		{name: "21 requires identifier", events: []Element{{AI: "21"}}, want: "AI (21) requires AI (01), AI (03), or AI (8006)"},
 		{name: "weight requires GTIN", events: []Element{{AI: "3102"}}, want: "AI (310) requires AI (01) or AI (02)"},
 		{name: "one weight decimal variant", events: []Element{{AI: "01"}, {AI: "3102"}, {AI: "3103"}}, want: "AI (310) allows only one decimal variant"},
-		{name: "253 stands alone", events: []Element{{AI: "253"}, {AI: "01"}}, want: "AI (253) must appear alone"},
-		{name: "8003 excludes 8004", events: []Element{{AI: "8003"}, {AI: "8004"}}, want: "AI (8003) excludes AI (8004)"},
 		{name: "8017 excludes 8018", events: []Element{{AI: "8017"}, {AI: "8018"}}, want: "AI (8017) excludes AI (8018)"},
+		{name: "01 excludes 37", events: []Element{{AI: "01"}, {AI: "37"}}, want: "AI (01) excludes AI (37)"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -401,14 +400,21 @@ func TestValidateAssociations(t *testing.T) {
 		})
 	}
 
-	valid := Barcode{Elements: []Element{{AI: "00"}, {AI: "02"}, {AI: "37"}}}
-	if err := valid.Validate(); err != nil {
-		t.Errorf("valid logistic association error = %v", err)
+	for _, valid := range []Barcode{
+		{Elements: []Element{{AI: "00"}, {AI: "02"}, {AI: "37"}}},
+		{Elements: []Element{{AI: "00"}, {AI: "8026"}, {AI: "37"}}},
+		{Elements: []Element{{AI: "01"}, {AI: "21"}}},
+		{Elements: []Element{{AI: "01"}, {AI: "3102"}}},
+		{Elements: []Element{{AI: "00"}, {AI: "3302"}}},
+	} {
+		if err := valid.Validate(); err != nil {
+			t.Errorf("valid association error = %v", err)
+		}
 	}
 }
 
 func TestParseWithAssociationValidation(t *testing.T) {
-	input := "0204150000021126" + "3720"
+	input := "00012345678901234567" + "0204150000021126" + "3720"
 	if _, err := ParseWithOptions(input, ParseOptions{ValidateAssociations: true}); err != nil {
 		t.Fatalf("valid associations error = %v", err)
 	}
