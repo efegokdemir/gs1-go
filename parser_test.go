@@ -416,12 +416,15 @@ func TestExpirationDateWithoutDueDateHasNoWarning(t *testing.T) {
 }
 
 func TestBarcodeReset(t *testing.T) {
-	b, err := Parse("0104150000021126172506302112345ABC\x1D10LOT42X")
+	b, err := Parse("12250630")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(b.Elements) != 4 {
-		t.Fatalf("got %d elements, want 4", len(b.Elements))
+	if len(b.Elements) != 1 {
+		t.Fatalf("got %d elements, want 1", len(b.Elements))
+	}
+	if got := b.Warnings(); len(got) != 1 || got[0].Code != WarnDueDateAsExpiry {
+		t.Fatalf("Warnings() before Reset() = %+v, want one %q warning", got, WarnDueDateAsExpiry)
 	}
 	origCap := cap(b.Elements)
 

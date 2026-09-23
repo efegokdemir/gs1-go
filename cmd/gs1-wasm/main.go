@@ -31,7 +31,6 @@ var dateAIs = map[string]string{
 	"17": "expirationDate",
 	"11": "productionDate",
 	"15": "bestBeforeDate",
-	"12": "dueDate",
 }
 
 func parse(_ js.Value, args []js.Value) any {
