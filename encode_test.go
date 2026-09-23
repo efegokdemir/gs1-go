@@ -43,6 +43,11 @@ func TestEncodeErrors(t *testing.T) {
 		{name: "wrong fixed length", elements: []Element{{AI: "17", Value: "2506"}}, wantErr: ErrInvalidData},
 		{name: "non-numeric", elements: []Element{{AI: "01", Value: "0415000002112A"}}, wantErr: ErrInvalidData},
 		{name: "FNC1 in value", elements: []Element{{AI: "10", Value: "LOT\x1D42"}}, wantErr: ErrInvalidData},
+		{name: "control character", elements: []Element{{AI: "10", Value: "LOT\x001"}}, wantErr: ErrInvalidData},
+		{name: "parentheses", elements: []Element{{AI: "10", Value: "LOT(1)"}}, wantErr: ErrInvalidData},
+		{name: "duplicate AI", elements: []Element{{AI: "10", Value: "A"}, {AI: "10", Value: "B"}}, wantErr: ErrInvalidData},
+		{name: "empty value", elements: []Element{{AI: "10", Value: ""}}, wantErr: ErrInvalidData},
+		{name: "invalid GTIN check digit", elements: []Element{{AI: "01", Value: "04150000021127"}}, wantErr: ErrInvalidCheckDigit},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -52,6 +57,54 @@ func TestEncodeErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEncodeLogisticLabel(t *testing.T) {
+	elements := []Element{
+		{AI: "00", Value: "106141411234567897"},
+		{AI: "02", Value: "04150000021126"},
+		{AI: "37", Value: "20"},
+		{AI: "10", Value: "LOT42"},
+		{AI: "414", Value: "0614141123452"},
+	}
+	encoded, err := Encode(elements)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := Parse(encoded)
+	if err != nil {
+		t.Fatalf("Parse(Encode()) error = %v", err)
+	}
+	if len(parsed.Elements) != len(elements) {
+		t.Fatalf("Parse(Encode()) got %d elements, want %d", len(parsed.Elements), len(elements))
+	}
+}
+
+func FuzzEncodeRoundTrip(f *testing.F) {
+	f.Add("LOT42", "SERIAL")
+	f.Fuzz(func(t *testing.T, lot, serial string) {
+		if len(lot) == 0 || len(lot) > 20 || len(serial) == 0 || len(serial) > 20 {
+			t.Skip()
+		}
+		for _, value := range []string{lot, serial} {
+			for i := 0; i < len(value); i++ {
+				if value[i] < 0x20 || value[i] > 0x7e || value[i] == '(' || value[i] == ')' {
+					t.Skip()
+				}
+			}
+		}
+		encoded, err := Encode([]Element{{AI: "10", Value: lot}, {AI: "21", Value: serial}})
+		if err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+		parsed, err := Parse(encoded)
+		if err != nil {
+			t.Fatalf("Parse(Encode()) error = %v", err)
+		}
+		if parsed.Lot() != lot || parsed.SerialNumber() != serial {
+			t.Fatalf("round trip changed values: lot=%q serial=%q", parsed.Lot(), parsed.SerialNumber())
+		}
+	})
 }
 
 func TestEncodeSeparatesFixedLengthNonPredefinedAI(t *testing.T) {

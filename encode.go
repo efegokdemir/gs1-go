@@ -14,21 +14,9 @@ func Encode(elements []Element) (string, error) {
 		return "", ErrEmptyInput
 	}
 	ordered := append([]Element(nil), elements...)
+	seen := make(map[string]struct{}, len(ordered))
 	for i, element := range ordered {
-		spec, ok := aiTable[element.AI]
-		if !ok {
-			return "", fmt.Errorf("%w: unknown AI (%s) at element %d", ErrUnknownAI, element.AI, i)
-		}
-		if strings.ContainsRune(element.Value, fnc1) {
-			return "", fmt.Errorf("%w: AI (%s) contains FNC1", ErrInvalidData, element.AI)
-		}
-		if spec.FixedLen > 0 && len(element.Value) != spec.FixedLen {
-			return "", fmt.Errorf("%w: AI (%s) needs %d chars, got %d", ErrInvalidData, element.AI, spec.FixedLen, len(element.Value))
-		}
-		if spec.FixedLen == 0 && (len(element.Value) == 0 || len(element.Value) > spec.MaxLen) {
-			return "", fmt.Errorf("%w: AI (%s) data length %d exceeds max %d", ErrInvalidData, element.AI, len(element.Value), spec.MaxLen)
-		}
-		if err := validateData(element.Value, spec); err != nil {
+		if err := validateEncodeElement(element, i, seen); err != nil {
 			return "", err
 		}
 	}
@@ -47,6 +35,48 @@ func Encode(elements []Element) (string, error) {
 		b.WriteString(element.Value)
 	}
 	return b.String(), nil
+}
+
+func validateEncodeElement(element Element, index int, seen map[string]struct{}) error {
+	spec, ok := aiTable[element.AI]
+	if !ok {
+		return fmt.Errorf("%w: unknown AI (%s) at element %d", ErrUnknownAI, element.AI, index)
+	}
+	if strings.ContainsRune(element.Value, fnc1) {
+		return fmt.Errorf("%w: AI (%s) contains FNC1", ErrInvalidData, element.AI)
+	}
+	if _, exists := seen[element.AI]; exists {
+		return fmt.Errorf("%w: duplicate AI (%s)", ErrInvalidData, element.AI)
+	}
+	seen[element.AI] = struct{}{}
+	if err := validateEncodableValue(element.Value, element.AI); err != nil {
+		return err
+	}
+	if spec.FixedLen > 0 && len(element.Value) != spec.FixedLen {
+		return fmt.Errorf("%w: AI (%s) needs %d chars, got %d", ErrInvalidData, element.AI, spec.FixedLen, len(element.Value))
+	}
+	if spec.FixedLen == 0 && len(element.Value) == 0 {
+		return fmt.Errorf("%w: AI (%s) data must not be empty", ErrInvalidData, element.AI)
+	}
+	if spec.FixedLen == 0 && len(element.Value) > spec.MaxLen {
+		return fmt.Errorf("%w: AI (%s) data length %d exceeds max %d", ErrInvalidData, element.AI, len(element.Value), spec.MaxLen)
+	}
+	if err := validateData(element.Value, spec); err != nil {
+		return err
+	}
+	if element.AI == "01" || element.AI == "02" {
+		return ValidateGTIN(element.Value)
+	}
+	return nil
+}
+
+func validateEncodableValue(value, ai string) error {
+	for i := 0; i < len(value); i++ {
+		if value[i] < 0x20 || value[i] > 0x7e || value[i] == '(' || value[i] == ')' {
+			return fmt.Errorf("%w: AI (%s) contains unsupported character at position %d", ErrInvalidData, ai, i)
+		}
+	}
+	return nil
 }
 
 // isPredefinedLengthAI reports whether GS1 table 7.8.5-2 permits omitting
