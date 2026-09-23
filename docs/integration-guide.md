@@ -143,8 +143,8 @@ include:
 | SSCC | `GIN+BJ` |
 | GTIN | `LIN+1++04150000021126:SRV` |
 | Additional item identifier | `PIA` |
-| Quantity | `QTY+12` |
-| Expiry date | `DTM+361:20250630:102` (AI 17 is YYMMDD; convert after validation) |
+| Quantity | `QTY+12` (despatched quantity) |
+| Expiry date | `DTM+361:20250630:102` (AI 17 is YYMMDD; validate it, then convert to CCYYMMDD) |
 | Lot or batch | `GIN+BX` |
 
 GS1 XML DespatchAdvice 3.x uses equivalent structures for the same record:
