@@ -90,7 +90,6 @@ type element struct {
 type parseOutput struct {
 	Raw      string        `json:"raw"`
 	Elements []element     `json:"elements"`
-	DueDate  string        `json:"dueDate,omitempty"`
 	Warnings []gs1.Warning `json:"warnings,omitempty"`
 	Error    string        `json:"error,omitempty"`
 }
@@ -114,7 +113,7 @@ func runParse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	var opts parseOptions
 	fs.BoolVar(&opts.json, "json", false, "emit one JSON object per barcode")
-	fs.BoolVar(&opts.iso, "iso", false, "render date AIs (11, 13, 15, 17) as ISO 8601")
+	fs.BoolVar(&opts.iso, "iso", false, "render date AIs (11, 12, 13, 15, 17) as ISO 8601")
 	fs.StringVar(&opts.validate, "validate", "", "check required AIs for a regulator: anvisa, anmat, snfa, cofepris")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -190,12 +189,11 @@ func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parse
 			return err
 		}
 	}
-	dueDate, _ := b.Get("12")
-	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements)), DueDate: dueDate, Warnings: b.Warnings()}
-	for _, warning := range b.Warnings() {
+	warnings := b.Warnings()
+	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements)), Warnings: warnings}
+	for _, warning := range warnings {
 		fmt.Fprintf(stderr, "gs1: warning: %s\n", warning.Message)
 	}
-	applyScalarDateFormat(&out, *b, opts.iso)
 	for _, e := range b.Elements {
 		el := element{AI: e.AI, Value: e.Value}
 		if ai, ok := gs1.LookupAI(e.AI); ok {
@@ -221,15 +219,6 @@ func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parse
 		}
 	}
 	return nil
-}
-
-func applyScalarDateFormat(out *parseOutput, b gs1.Barcode, iso bool) {
-	if !iso {
-		return
-	}
-	if t, err := b.DueDate(); err == nil {
-		out.DueDate = t.Format("2006-01-02")
-	}
 }
 
 func isDateAI(ai string) bool {

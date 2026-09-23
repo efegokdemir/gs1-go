@@ -177,6 +177,7 @@ Formats use GS1 Syntax Dictionary notation: `N14` is exactly 14 digits,
 | 02 | Content GTIN | N14 |
 | 10 | Batch/Lot | X..20 |
 | 11 | Production Date | N6 |
+| 12 | Due Date | N6 |
 | 13 | Packaging Date | N6 |
 | 15 | Best Before Date | N6 |
 | 17 | Expiration Date | N6 |

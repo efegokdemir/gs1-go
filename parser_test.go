@@ -405,6 +405,16 @@ func TestDueDateWithExpirationHasNoWarning(t *testing.T) {
 	}
 }
 
+func TestExpirationDateWithoutDueDateHasNoWarning(t *testing.T) {
+	b, err := Parse("17250630")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := b.Warnings(); len(got) != 0 {
+		t.Errorf("Warnings() = %+v, want none", got)
+	}
+}
+
 func TestBarcodeReset(t *testing.T) {
 	b, err := Parse("0104150000021126172506302112345ABC\x1D10LOT42X")
 	if err != nil {
@@ -416,6 +426,9 @@ func TestBarcodeReset(t *testing.T) {
 	origCap := cap(b.Elements)
 
 	b.Reset()
+	if got := b.Warnings(); len(got) != 0 {
+		t.Errorf("Warnings() after Reset() = %+v, want empty", got)
+	}
 
 	if b.Raw != "" {
 		t.Errorf("Raw = %q after Reset, want empty", b.Raw)
