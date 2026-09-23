@@ -45,6 +45,7 @@ func TestMeasure(t *testing.T) {
 }
 
 func TestMeasureDecimalPositions(t *testing.T) {
+	wantValues := []float64{1250, 125, 12.5, 1.25, 0.125, 0.0125}
 	for decimals := 0; decimals <= 5; decimals++ {
 		t.Run(itoa(decimals), func(t *testing.T) {
 			b, err := Parse("310" + itoa(decimals) + "001250")
@@ -58,7 +59,28 @@ func TestMeasureDecimalPositions(t *testing.T) {
 			if got.Decimals != decimals {
 				t.Errorf("Decimals = %d, want %d", got.Decimals, decimals)
 			}
+			if got.Scaled != 1250 {
+				t.Errorf("Scaled = %d, want 1250", got.Scaled)
+			}
+			if got.Value != wantValues[decimals] {
+				t.Errorf("Value = %v, want %v", got.Value, wantValues[decimals])
+			}
 		})
+	}
+}
+
+func TestMeasureRoundsDecimalValue(t *testing.T) {
+	b, err := Parse("3102000007")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	got, ok := b.NetWeightKg()
+	if !ok {
+		t.Fatal("NetWeightKg() = not found")
+	}
+	if got.Decimals != 2 || got.Scaled != 7 || got.Value != 0.07 {
+		t.Errorf("Measure() = %#v, want decimals 2, scaled 7, value 0.07", got)
 	}
 }
 

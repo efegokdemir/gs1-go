@@ -7,6 +7,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- `Measure` and typed barcode measurement accessors for net and gross weight.
+- Measurement data in CLI JSON output.
+
 ## [0.1.0] - 2026-09-22
 
 First release as a standalone module. The code was extracted from the `gs1`

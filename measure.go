@@ -1,6 +1,9 @@
 package gs1
 
-import "strconv"
+import (
+	"math"
+	"strconv"
+)
 
 // Measure is a numeric GS1 measurement with its original representation.
 // Scaled is the integer value before applying Decimals decimal places.
@@ -32,10 +35,7 @@ func (b Barcode) Measure(prefix string) (Measure, bool) {
 		if err != nil {
 			continue
 		}
-		value := float64(scaled)
-		for i := 0; i < decimals; i++ {
-			value /= 10
-		}
+		value := float64(scaled) / math.Pow10(decimals)
 		return Measure{Value: value, Raw: element.Value, Scaled: scaled, Decimals: decimals, Unit: unit}, true
 	}
 	return Measure{}, false
