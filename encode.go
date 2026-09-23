@@ -33,20 +33,30 @@ func Encode(elements []Element) (string, error) {
 		}
 	}
 	sort.SliceStable(ordered, func(i, j int) bool {
-		return aiTable[ordered[i].AI].FixedLen > 0 && aiTable[ordered[j].AI].FixedLen == 0
+		return isPredefinedLengthAI(ordered[i].AI) && !isPredefinedLengthAI(ordered[j].AI)
 	})
 
 	var b strings.Builder
 	b.Grow(1 + len(ordered)*4)
 	b.WriteByte(byte(fnc1))
 	for i, element := range ordered {
-		if i > 0 && aiTable[ordered[i-1].AI].FixedLen == 0 {
+		if i > 0 && !isPredefinedLengthAI(ordered[i-1].AI) {
 			b.WriteByte(byte(fnc1))
 		}
 		b.WriteString(element.AI)
 		b.WriteString(element.Value)
 	}
 	return b.String(), nil
+}
+
+// isPredefinedLengthAI reports whether GS1 table 7.8.5-2 permits omitting
+// FNC1 after this AI when another element follows it.
+func isPredefinedLengthAI(ai string) bool {
+	if len(ai) < 2 {
+		return false
+	}
+	prefix := int(ai[0]-'0')*10 + int(ai[1]-'0')
+	return prefix <= 4 || prefix == 41 || prefix >= 11 && prefix <= 20 || prefix >= 31 && prefix <= 36
 }
 
 // HRI returns the human-readable interpretation of the barcode elements.

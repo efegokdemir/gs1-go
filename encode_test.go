@@ -53,3 +53,17 @@ func TestEncodeErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestEncodeSeparatesFixedLengthNonPredefinedAI(t *testing.T) {
+	got, err := Encode([]Element{
+		{AI: "402", Value: "12345678901234567"},
+		{AI: "10", Value: "LOT1"},
+	})
+	if err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	want := "\x1D40212345678901234567\x1D10LOT1"
+	if got != want {
+		t.Errorf("Encode() = %q, want %q", got, want)
+	}
+}

@@ -28,7 +28,7 @@
 //
 // ParseInto reuses a caller-owned Barcode for zero-allocation parsing in
 // hot loops. Each goroutine must own its Barcode.
-
+//
 // Encode builds element strings for barcode generators, and Barcode.HRI
 // formats parsed elements for human-readable labels.
 //
