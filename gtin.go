@@ -15,6 +15,9 @@ func NewSSCC(extensionDigit byte, companyPrefix, serialReference string) (string
 	if err := validateDigits("serial reference", serialReference); err != nil {
 		return "", err
 	}
+	if len(companyPrefix) < 4 || len(companyPrefix) > 12 {
+		return "", fmt.Errorf("%w: company prefix must be between 4 and 12 digits", ErrInvalidData)
+	}
 	if len(companyPrefix)+len(serialReference) != 16 {
 		return "", fmt.Errorf("%w: company prefix and serial reference must total 16 digits", ErrInvalidData)
 	}
@@ -74,8 +77,8 @@ func SplitSSCC(sscc string, gcpLen int) (extension byte, companyPrefix, serialRe
 	if err := ValidateCheckDigit(sscc); err != nil {
 		return 0, "", "", err
 	}
-	if gcpLen < 1 || gcpLen > 15 {
-		return 0, "", "", fmt.Errorf("%w: GCP length must be between 1 and 15", ErrInvalidData)
+	if gcpLen < 4 || gcpLen > 12 {
+		return 0, "", "", fmt.Errorf("%w: GCP length must be between 4 and 12", ErrInvalidData)
 	}
 
 	return sscc[0], sscc[1 : 1+gcpLen], sscc[1+gcpLen : 17], nil
@@ -107,8 +110,8 @@ func ValidateGTIN(gtin string) error {
 // GTIN (all digits except the check digit). Returns the check digit as a byte
 // ('0'-'9').
 func ComputeGTINCheckDigit(partial string) (byte, error) {
-	if len(partial) == 0 {
-		return 0, fmt.Errorf("%w: partial length must be positive", ErrInvalidData)
+	if len(partial) != 7 && len(partial) != 11 && len(partial) != 12 && len(partial) != 13 {
+		return 0, fmt.Errorf("%w: partial length %d not valid (expected 7, 11, 12, or 13)", ErrInvalidData, len(partial))
 	}
 	return computeCheckDigit(partial)
 }

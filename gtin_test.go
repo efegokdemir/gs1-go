@@ -52,6 +52,9 @@ func TestValidateGTIN(t *testing.T) {
 			}
 		})
 	}
+	if _, err := ComputeGTINCheckDigit("1234567890"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("ComputeGTINCheckDigit() error = %v, want ErrInvalidData", err)
+	}
 }
 
 func TestComputeGTINCheckDigit(t *testing.T) {
@@ -115,6 +118,12 @@ func TestIdentifierBuildersRejectInvalidInput(t *testing.T) {
 	}
 	if err := ValidateCheckDigit("378012340000000097"); !errors.Is(err, ErrInvalidCheckDigit) {
 		t.Errorf("ValidateCheckDigit() error = %v, want ErrInvalidCheckDigit", err)
+	}
+	if _, _, _, err := SplitSSCC("378012340000000095", 3); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("SplitSSCC() error = %v, want ErrInvalidData", err)
+	}
+	if _, err := NewGTIN14('1', "04150000021126"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("NewGTIN14() length error = %v, want ErrInvalidData", err)
 	}
 }
 

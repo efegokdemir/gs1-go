@@ -7,6 +7,10 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- SSCC/GTIN identifier builders and check-digit validation helpers.
+
 ## [0.1.0] - 2026-09-22
 
 First release as a standalone module. The code was extracted from the `gs1`
