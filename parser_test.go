@@ -469,6 +469,19 @@ func TestIdentifierConvenienceMethods(t *testing.T) {
 	}
 }
 
+func TestMissingFNC1DoesNotTreatEmbeddedTextAsMixedIdentifier(t *testing.T) {
+	b, err := Parse("10LOT253ABCDEFGHIJKLM21SERIAL")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := b.Lot(); got != "LOT253ABCDEFGHIJKLM" {
+		t.Errorf("Lot() = %q, want LOT253ABCDEFGHIJKLM", got)
+	}
+	if got := b.SerialNumber(); got != "SERIAL" {
+		t.Errorf("SerialNumber() = %q, want SERIAL", got)
+	}
+}
+
 func TestBarcodeReset(t *testing.T) {
 	b, err := Parse("0104150000021126172506302112345ABC\x1D10LOT42X")
 	if err != nil {

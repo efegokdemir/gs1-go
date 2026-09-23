@@ -364,6 +364,9 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 
 // plausibleAIData checks whether the data after a candidate AI looks valid.
 func plausibleAIData(data string, dataStart int, spec aiSpec) bool {
+	if !validAIDataPrefix(data, dataStart, spec) {
+		return false
+	}
 	if spec.FixedLen > 0 {
 		if dataStart+spec.FixedLen > len(data) {
 			return false
@@ -395,6 +398,9 @@ func canParseFrom(data string, pos int) bool {
 			return false
 		}
 		pos += aiLen
+		if !validAIDataPrefix(data, pos, spec) {
+			return false
+		}
 		if spec.FixedLen > 0 {
 			if !validFixedField(data, pos, spec) {
 				return false
@@ -415,6 +421,20 @@ func canParseFrom(data string, pos int) bool {
 		}
 	}
 	return true
+}
+
+func validAIDataPrefix(data string, dataStart int, spec aiSpec) bool {
+	if spec.NumericPrefixLen > 0 {
+		if dataStart+spec.NumericPrefixLen > len(data) {
+			return false
+		}
+		for i := dataStart; i < dataStart+spec.NumericPrefixLen; i++ {
+			if data[i] < '0' || data[i] > '9' {
+				return false
+			}
+		}
+	}
+	return spec.FirstChar == 0 || (dataStart < len(data) && data[dataStart] == spec.FirstChar)
 }
 
 func validFixedField(data string, pos int, spec aiSpec) bool {
