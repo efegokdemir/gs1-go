@@ -30,7 +30,8 @@ const (
 	SymEANUPC
 	// SymITF14 identifies an ITF-14 carrier.
 	SymITF14
-	// SymDataBar identifies a GS1 DataBar carrier.
+	// SymDataBar is reserved for a future DataBar distinction. AIM ]e0 is
+	// shared by DataBar and composite carriers, so this parser cannot emit it.
 	SymDataBar
 	// SymComposite identifies a GS1 composite carrier.
 	SymComposite
