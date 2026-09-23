@@ -85,6 +85,10 @@ func TestComputeGTINCheckDigit(t *testing.T) {
 }
 
 func TestIdentifierBuilders(t *testing.T) {
+	if got, err := NewSSCC('1', "0614141", "123456789"); err != nil || got != "106141411234567897" {
+		t.Fatalf("NewSSCC() reference vector = %q, %v; want %q", got, err, "106141411234567897")
+	}
+
 	sscc, err := NewSSCC('3', "7801234", "000000009")
 	if err != nil {
 		t.Fatalf("NewSSCC() error = %v", err)
