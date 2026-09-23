@@ -110,6 +110,16 @@ func TestGTIN(t *testing.T) {
 	}
 }
 
+func TestSSCC(t *testing.T) {
+	code, out, _ := exec(t, "", "sscc", "-ext", "3", "-gcp", "7801234", "-serial", "000000009")
+	if code != 0 || strings.TrimSpace(out) != "378012340000000095" {
+		t.Errorf("SSCC: exit %d out %q", code, out)
+	}
+	if code, _, _ := exec(t, "", "sscc", "-ext", "3", "-gcp", "7", "-serial", "000000009"); code != 1 {
+		t.Errorf("invalid SSCC: exit %d, want 1", code)
+	}
+}
+
 func TestAI(t *testing.T) {
 	code, out, _ := exec(t, "", "ai", "3102")
 	if code != 0 || !strings.Contains(out, "Net Weight kg") || !strings.Contains(out, "N6") {

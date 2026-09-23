@@ -5,6 +5,7 @@
 //
 //	gs1 parse [-json] [-iso] [-validate REGULATOR] [BARCODE]
 //	gs1 gtin GTIN
+//	gs1 sscc -ext DIGIT -gcp PREFIX -serial REFERENCE
 //	gs1 ai CODE
 //	gs1 version
 //
@@ -44,6 +45,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runParse(args[1:], stdin, stdout, stderr)
 	case "gtin":
 		return runGTIN(args[1:], stdout, stderr)
+	case "sscc":
+		return runSSCC(args[1:], stdout, stderr)
 	case "ai":
 		return runAI(args[1:], stdout, stderr)
 	case "version":
@@ -65,6 +68,7 @@ func usage(w io.Writer) {
 Usage:
   gs1 parse [-json] [-iso] [-validate REGULATOR] [BARCODE]
   gs1 gtin GTIN
+  gs1 sscc -ext DIGIT -gcp PREFIX -serial REFERENCE
   gs1 ai CODE
   gs1 version
 
@@ -72,6 +76,7 @@ Commands:
   parse    Parse a GS1-128 / DataMatrix element string. Reads stdin line by
            line when BARCODE is omitted.
   gtin     Validate the check digit of a GTIN-8/12/13/14.
+  sscc     Build an 18-digit Serial Shipping Container Code.
   ai       Show name and format of an Application Identifier.
   version  Print the build version.
 
@@ -237,6 +242,28 @@ func runGTIN(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	fmt.Fprintln(stdout, "valid")
+	return 0
+}
+
+func runSSCC(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("gs1 sscc", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	extension := fs.String("ext", "", "SSCC extension digit")
+	companyPrefix := fs.String("gcp", "", "GS1 company prefix")
+	serialReference := fs.String("serial", "", "serial reference")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 || len(*extension) != 1 {
+		fmt.Fprintln(stderr, "usage: gs1 sscc -ext DIGIT -gcp PREFIX -serial REFERENCE")
+		return 2
+	}
+	sscc, err := gs1.NewSSCC((*extension)[0], *companyPrefix, *serialReference)
+	if err != nil {
+		fmt.Fprintln(stderr, "gs1:", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, sscc)
 	return 0
 }
 
