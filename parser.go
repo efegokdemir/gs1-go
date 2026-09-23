@@ -220,6 +220,13 @@ func extractData(data string, pos int, spec aiSpec) (string, int, error) {
 
 // validateData checks that the value conforms to the AI's data type.
 func validateData(value string, spec aiSpec) error {
+	if spec.DataType == dataUIC {
+		if len(value) != 4 || value[0] < '0' || value[0] > '9' {
+			return fmt.Errorf("%w: AI (%s) expects N1 + X3 data, got %q",
+				ErrInvalidData, spec.AI, value)
+		}
+		return nil
+	}
 	if spec.DataType != dataNumeric {
 		return nil
 	}

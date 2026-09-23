@@ -125,6 +125,30 @@ func TestParse(t *testing.T) {
 			wantCount: 1,
 			wantAIs:   []string{"414"},
 		},
+		{
+			name:      "ship-to GLN",
+			input:     "4101234567890123",
+			wantCount: 1,
+			wantAIs:   []string{"410"},
+		},
+		{
+			name:      "party GLN",
+			input:     "4171234567890123",
+			wantCount: 1,
+			wantAIs:   []string{"417"},
+		},
+		{
+			name:      "GLN extension component",
+			input:     "254EXTENSION",
+			wantCount: 1,
+			wantAIs:   []string{"254"},
+		},
+		{
+			name:      "GS1 UIC with extension",
+			input:     "70401ABC",
+			wantCount: 1,
+			wantAIs:   []string{"7040"},
+		},
 		// GSIN
 		{
 			name:      "GSIN",
@@ -262,6 +286,11 @@ func TestParse(t *testing.T) {
 		{
 			name:    "non-numeric in numeric field",
 			input:   "01ABCDEFGHIJKLMN",
+			wantErr: ErrInvalidData,
+		},
+		{
+			name:    "UIC extension must start with a digit",
+			input:   "7040A123",
 			wantErr: ErrInvalidData,
 		},
 		{

@@ -190,7 +190,16 @@ Formats use GS1 Syntax Dictionary notation: `N14` is exactly 14 digits,
 | 330n | Gross Weight, kg | N6 |
 | 340n | Gross Weight, lb | N6 |
 | 402 | GSIN | N17 |
+| 410 | Ship to / Deliver to GLN | N13 |
+| 411 | Bill to / Invoice to GLN | N13 |
+| 412 | Purchased from GLN | N13 |
+| 413 | Ship for / Deliver for GLN | N13 |
 | 414 | GLN | N13 |
+| 415 | Invoicing party GLN | N13 |
+| 416 | Production / service location GLN | N13 |
+| 417 | Party GLN | N13 |
+| 254 | GLN extension component | X..20 |
+| 7040 | GS1 UIC with extension | N1 + X3 |
 | 710–714 | NHRN (DE, FR, ES, BR, PT) | X..20 |
 | 90 | Internal | X..30 |
 | 91–99 | Internal | X..90 |
