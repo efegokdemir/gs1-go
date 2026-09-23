@@ -24,6 +24,11 @@ b.GTIN()          // "04150000021126"
 b.Lot()           // "LOT42X"
 b.SerialNumber()  // "12345ABC"
 b.ExpirationDate() // 2025-06-30 00:00:00 +0000 UTC
+b.PackagingDate() // 2025-06-01 00:00:00 +0000 UTC
+b.ContentGTIN() // "04150000021126"
+b.CountOfTradeItems() // "42"
+b.GLN() // "1234567890123"
+b.GSIN() // "12345678901234567"
 ```
 
 ## Features

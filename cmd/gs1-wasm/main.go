@@ -15,14 +15,19 @@ type elementJSON struct {
 }
 
 type parseResultJSON struct {
-	Raw            string        `json:"raw"`
-	Elements       []elementJSON `json:"elements"`
-	GTIN           string        `json:"gtin"`
-	Lot            string        `json:"lot"`
-	Serial         string        `json:"serial"`
-	ExpirationDate string        `json:"expirationDate,omitempty"`
-	ProductionDate string        `json:"productionDate,omitempty"`
-	BestBeforeDate string        `json:"bestBeforeDate,omitempty"`
+	Raw               string        `json:"raw"`
+	Elements          []elementJSON `json:"elements"`
+	GTIN              string        `json:"gtin"`
+	Lot               string        `json:"lot"`
+	Serial            string        `json:"serial"`
+	ContentGTIN       string        `json:"contentGtin,omitempty"`
+	CountOfTradeItems string        `json:"countOfTradeItems,omitempty"`
+	GLN               string        `json:"gln,omitempty"`
+	GSIN              string        `json:"gsin,omitempty"`
+	PackagingDate     string        `json:"packagingDate,omitempty"`
+	ExpirationDate    string        `json:"expirationDate,omitempty"`
+	ProductionDate    string        `json:"productionDate,omitempty"`
+	BestBeforeDate    string        `json:"bestBeforeDate,omitempty"`
 }
 
 // dateAIs are the AI codes that contain YYMMDD dates.
@@ -30,6 +35,7 @@ var dateAIs = map[string]string{
 	"17": "expirationDate",
 	"11": "productionDate",
 	"15": "bestBeforeDate",
+	"13": "packagingDate",
 }
 
 func parse(_ js.Value, args []js.Value) any {
@@ -58,12 +64,18 @@ func parse(_ js.Value, args []js.Value) any {
 		return errorResult(err.Error())
 	}
 
+	packagingDate, _ := b.Get("13")
 	result := parseResultJSON{
-		Raw:      b.Raw,
-		Elements: make([]elementJSON, len(b.Elements)),
-		GTIN:     b.GTIN(),
-		Lot:      b.Lot(),
-		Serial:   b.SerialNumber(),
+		Raw:               b.Raw,
+		Elements:          make([]elementJSON, len(b.Elements)),
+		GTIN:              b.GTIN(),
+		Lot:               b.Lot(),
+		Serial:            b.SerialNumber(),
+		ContentGTIN:       b.ContentGTIN(),
+		CountOfTradeItems: b.CountOfTradeItems(),
+		GLN:               b.GLN(),
+		GSIN:              b.GSIN(),
+		PackagingDate:     packagingDate,
 	}
 	for i, e := range b.Elements {
 		result.Elements[i] = elementJSON{AI: e.AI, Value: e.Value}
@@ -92,6 +104,8 @@ func parse(_ js.Value, args []js.Value) any {
 			result.ProductionDate = dateStr
 		case "bestBeforeDate":
 			result.BestBeforeDate = dateStr
+		case "packagingDate":
+			result.PackagingDate = dateStr
 		}
 	}
 

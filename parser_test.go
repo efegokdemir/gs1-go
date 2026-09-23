@@ -336,7 +336,6 @@ func TestParseConvenienceMethods(t *testing.T) {
 	if got := b.SerialNumber(); got != "12345ABC" {
 		t.Errorf("SerialNumber() = %q, want %q", got, "12345ABC")
 	}
-
 	expiry, err := b.ExpirationDate()
 	if err != nil {
 		t.Fatalf("ExpirationDate() error = %v", err)
@@ -353,6 +352,35 @@ func TestParseConvenienceMethods(t *testing.T) {
 	_, ok = b.Get("00")
 	if ok {
 		t.Error("Get(00) should return false for missing AI")
+	}
+}
+
+func TestParseAdditionalConvenienceMethods(t *testing.T) {
+	input := "0104150000021126" + "0204150000021126" + "13250601" + "3742\x1D" + "40212345678901234567" + "4141234567890123"
+	b, err := Parse(input)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	for _, tt := range []struct {
+		name, got, want string
+	}{
+		{"ContentGTIN", b.ContentGTIN(), "04150000021126"},
+		{"CountOfTradeItems", b.CountOfTradeItems(), "42"},
+		{"GLN", b.GLN(), "1234567890123"},
+		{"GSIN", b.GSIN(), "12345678901234567"},
+	} {
+		if tt.got != tt.want {
+			t.Errorf("%s() = %q, want %q", tt.name, tt.got, tt.want)
+		}
+	}
+
+	packaging, err := b.PackagingDate()
+	if err != nil {
+		t.Fatalf("PackagingDate() error = %v", err)
+	}
+	if !packaging.Equal(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("PackagingDate() = %v, want 2025-06-01", packaging)
 	}
 }
 
