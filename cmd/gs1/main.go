@@ -88,9 +88,14 @@ type element struct {
 }
 
 type parseOutput struct {
-	Raw      string    `json:"raw"`
-	Elements []element `json:"elements"`
-	Error    string    `json:"error,omitempty"`
+	Raw               string    `json:"raw"`
+	Elements          []element `json:"elements"`
+	ContentGTIN       string    `json:"contentGtin,omitempty"`
+	CountOfTradeItems string    `json:"countOfTradeItems,omitempty"`
+	GLN               string    `json:"gln,omitempty"`
+	GSIN              string    `json:"gsin,omitempty"`
+	PackagingDate     string    `json:"packagingDate,omitempty"`
+	Error             string    `json:"error,omitempty"`
 }
 
 type parseOptions struct {
@@ -188,7 +193,23 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 			return err
 		}
 	}
-	out := parseOutput{Raw: b.Raw, Elements: make([]element, 0, len(b.Elements))}
+	packagingDate, _ := b.Get("13")
+	out := parseOutput{
+		Raw:               b.Raw,
+		Elements:          make([]element, 0, len(b.Elements)),
+		ContentGTIN:       b.ContentGTIN(),
+		CountOfTradeItems: b.CountOfTradeItems(),
+		GLN:               b.GLN(),
+		GSIN:              b.GSIN(),
+		PackagingDate:     packagingDate,
+	}
+	if opts.iso {
+		if t, err := b.PackagingDate(); err == nil {
+			out.PackagingDate = t.Format("2006-01-02")
+		} else {
+			out.PackagingDate = ""
+		}
+	}
 	for _, e := range b.Elements {
 		el := element{AI: e.AI, Value: e.Value}
 		if ai, ok := gs1.LookupAI(e.AI); ok {

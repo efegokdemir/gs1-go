@@ -16,7 +16,7 @@ receiving, and pharmaceutical serialization systems.
 ```go
 import "github.com/galenzo17/gs1-go"
 
-b, err := gs1.Parse("]d20104150000021126172506302112345ABC\x1D10LOT42X")
+b, err := gs1.Parse("(01)04150000021126(02)04150000021126(13)250601(17)250630(37)42(402)12345678901234567(414)1234567890123(21)12345ABC(10)LOT42X")
 if err != nil {
     return err
 }
@@ -24,6 +24,11 @@ b.GTIN()          // "04150000021126"
 b.Lot()           // "LOT42X"
 b.SerialNumber()  // "12345ABC"
 b.ExpirationDate() // 2025-06-30 00:00:00 +0000 UTC
+b.PackagingDate() // 2025-06-01 00:00:00 +0000 UTC
+b.ContentGTIN() // "04150000021126"
+b.CountOfTradeItems() // "42"
+b.GLN() // "1234567890123"
+b.GSIN() // "12345678901234567"
 ```
 
 ## Features
