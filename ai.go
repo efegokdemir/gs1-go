@@ -6,6 +6,7 @@ type dataType int
 const (
 	dataNumeric      dataType = iota // N: digits 0-9 only
 	dataAlphanumeric                 // X: any character
+	dataUIC                          // N1+X3: one digit followed by three characters
 )
 
 // aiSpec describes the format of a single GS1 Application Identifier.
@@ -80,8 +81,17 @@ var aiTable = map[string]aiSpec{
 	"3404": {AI: "3404", Name: "Gross Weight lb", FixedLen: 6, MaxLen: 6, DataType: dataNumeric},
 	"3405": {AI: "3405", Name: "Gross Weight lb", FixedLen: 6, MaxLen: 6, DataType: dataNumeric},
 
-	// GLN — Global Location Number
-	"414": {AI: "414", Name: "GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	// GLN family — Global Location Numbers
+	"410":  {AI: "410", Name: "Ship to / Deliver to GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"411":  {AI: "411", Name: "Bill to / Invoice to GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"412":  {AI: "412", Name: "Purchased from GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"413":  {AI: "413", Name: "Ship for / Deliver for GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"414":  {AI: "414", Name: "GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"415":  {AI: "415", Name: "Invoicing party GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"416":  {AI: "416", Name: "Production / service location GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"417":  {AI: "417", Name: "Party GLN", FixedLen: 13, MaxLen: 13, DataType: dataNumeric},
+	"254":  {AI: "254", Name: "GLN extension component", FixedLen: 0, MaxLen: 20, DataType: dataAlphanumeric},
+	"7040": {AI: "7040", Name: "GS1 UIC with extension", FixedLen: 4, MaxLen: 4, DataType: dataUIC},
 
 	// GSIN — Global Shipment Identification Number
 	"402": {AI: "402", Name: "GSIN", FixedLen: 17, MaxLen: 17, DataType: dataNumeric},
@@ -154,6 +164,9 @@ func LookupAI(code string) (AI, bool) {
 
 // format renders the spec in GS1 Syntax Dictionary notation.
 func (s aiSpec) format() string {
+	if s.DataType == dataUIC {
+		return "N1 + X3"
+	}
 	prefix := "N"
 	if s.DataType == dataAlphanumeric {
 		prefix = "X"

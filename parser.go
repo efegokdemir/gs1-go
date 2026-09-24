@@ -70,6 +70,30 @@ func (b Barcode) Count() string {
 	return v
 }
 
+// ContentGTIN returns the contained-item GTIN value (AI 02), or "" if not present.
+func (b Barcode) ContentGTIN() string {
+	v, _ := b.Get("02")
+	return v
+}
+
+// CountOfTradeItems returns the count of trade items (AI 37), or "" if not present.
+func (b Barcode) CountOfTradeItems() string {
+	v, _ := b.Get("37")
+	return v
+}
+
+// GLN returns the Global Location Number (AI 414), or "" if not present.
+func (b Barcode) GLN() string {
+	v, _ := b.Get("414")
+	return v
+}
+
+// GSIN returns the Global Shipment Identification Number (AI 402), or "" if not present.
+func (b Barcode) GSIN() string {
+	v, _ := b.Get("402")
+	return v
+}
+
 // ExpirationDate returns the parsed expiration date (AI 17).
 func (b Barcode) ExpirationDate() (time.Time, error) {
 	v, ok := b.Get("17")
@@ -84,6 +108,15 @@ func (b Barcode) ProductionDate() (time.Time, error) {
 	v, ok := b.Get("11")
 	if !ok {
 		return time.Time{}, fmt.Errorf("%w: AI (11) not present", ErrInvalidData)
+	}
+	return ParseDate(v)
+}
+
+// PackagingDate returns the parsed packaging date (AI 13).
+func (b Barcode) PackagingDate() (time.Time, error) {
+	v, ok := b.Get("13")
+	if !ok {
+		return time.Time{}, fmt.Errorf("%w: AI (13) not present", ErrInvalidData)
 	}
 	return ParseDate(v)
 }
@@ -256,6 +289,13 @@ func extractData(data string, pos int, spec aiSpec) (string, int, error) {
 
 // validateData checks that the value conforms to the AI's data type.
 func validateData(value string, spec aiSpec) error {
+	if spec.DataType == dataUIC {
+		if len(value) != 4 || value[0] < '0' || value[0] > '9' {
+			return fmt.Errorf("%w: AI (%s) expects N1 + X3 data, got %q",
+				ErrInvalidData, spec.AI, value)
+		}
+		return nil
+	}
 	if spec.DataType != dataNumeric {
 		return nil
 	}

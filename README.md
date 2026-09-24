@@ -16,7 +16,7 @@ receiving, and pharmaceutical serialization systems.
 ```go
 import "github.com/galenzo17/gs1-go"
 
-b, err := gs1.Parse("]d20104150000021126172506302112345ABC\x1D10LOT42X")
+b, err := gs1.Parse("(01)04150000021126(02)04150000021126(13)250601(17)250630(37)42(402)12345678901234567(414)1234567890123(21)12345ABC(10)LOT42X")
 if err != nil {
     return err
 }
@@ -24,6 +24,11 @@ b.GTIN()          // "04150000021126"
 b.Lot()           // "LOT42X"
 b.SerialNumber()  // "12345ABC"
 b.ExpirationDate() // 2025-06-30 00:00:00 +0000 UTC
+b.PackagingDate() // 2025-06-01 00:00:00 +0000 UTC
+b.ContentGTIN() // "04150000021126"
+b.CountOfTradeItems() // "42"
+b.GLN() // "1234567890123"
+b.GSIN() // "12345678901234567"
 ```
 
 ## Features
@@ -195,7 +200,16 @@ Formats use GS1 Syntax Dictionary notation: `N14` is exactly 14 digits,
 | 330n | Gross Weight, kg | N6 |
 | 340n | Gross Weight, lb | N6 |
 | 402 | GSIN | N17 |
+| 410 | Ship to / Deliver to GLN | N13 |
+| 411 | Bill to / Invoice to GLN | N13 |
+| 412 | Purchased from GLN | N13 |
+| 413 | Ship for / Deliver for GLN | N13 |
 | 414 | GLN | N13 |
+| 415 | Invoicing party GLN | N13 |
+| 416 | Production / service location GLN | N13 |
+| 417 | Party GLN | N13 |
+| 254 | GLN extension component | X..20 |
+| 7040 | GS1 UIC with extension | N1 + X3 |
 | 710–714 | NHRN (DE, FR, ES, BR, PT) | X..20 |
 | 90 | Internal | X..30 |
 | 91–99 | Internal | X..90 |

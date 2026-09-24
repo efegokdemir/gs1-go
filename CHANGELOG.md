@@ -9,6 +9,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ### Added
 
+- Typed `Barcode` accessors and matching CLI JSON, WebAssembly and TypeScript fields.
 - `DueDate()` and `Warnings()` support, including due-date advisories in CLI
   and WASM JSON output.
 
