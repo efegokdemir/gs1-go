@@ -11,6 +11,16 @@ export interface GS1ParseResult {
   gtin: string;
   lot: string;
   serial: string;
+  /** Contained-item GTIN (AI 02). */
+  contentGtin?: string;
+  /** Count of trade items (AI 37). */
+  countOfTradeItems?: string;
+  /** Global Location Number (AI 414). */
+  gln?: string;
+  /** Global Shipment Identification Number (AI 402). */
+  gsin?: string;
+  /** Packaging date (AI 13). Raw YYMMDD or ISO 8601 depending on dateFormat. */
+  packagingDate?: string;
   /** Expiration date (AI 17). Raw YYMMDD or ISO 8601 depending on dateFormat. */
   expirationDate?: string;
   /** Production date (AI 11). Raw YYMMDD or ISO 8601 depending on dateFormat. */
