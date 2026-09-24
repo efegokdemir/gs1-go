@@ -27,7 +27,7 @@ func TestParseText(t *testing.T) {
 }
 
 func TestParseJSONWithISODates(t *testing.T) {
-	code, out, _ := exec(t, "", "parse", "-json", "-iso", "0104150000021126172502001012345")
+	code, out, _ := exec(t, "", "parse", "-json", "-iso", "010415000002112617250200020415000002112613250601")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -35,11 +35,30 @@ func TestParseJSONWithISODates(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("invalid JSON: %v\n%s", err, out)
 	}
-	if len(got.Elements) != 3 {
-		t.Fatalf("elements = %d, want 3", len(got.Elements))
+	if len(got.Elements) != 4 {
+		t.Fatalf("elements = %d, want 4", len(got.Elements))
 	}
 	if got.Elements[1].Date != "2025-02-28" {
 		t.Errorf("date = %q, want 2025-02-28", got.Elements[1].Date)
+	}
+	if got.PackagingDate != "2025-06-01" {
+		t.Errorf("packagingDate = %q, want 2025-06-01", got.PackagingDate)
+	}
+}
+
+func TestParseJSONIncludesTypedAccessors(t *testing.T) {
+	input := "0104150000021126" + "0204150000021126" + "13250601" + "3742\x1D" + "40212345678901234567" + "4141234567890123"
+	code, out, _ := exec(t, "", "parse", "-json", input)
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+
+	var got parseOutput
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+	if got.ContentGTIN != "04150000021126" || got.CountOfTradeItems != "42" || got.GLN != "1234567890123" || got.GSIN != "12345678901234567" || got.PackagingDate != "250601" {
+		t.Errorf("typed accessors = %+v", got)
 	}
 }
 

@@ -9,6 +9,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ### Added
 
+- Typed `Barcode` accessors and matching CLI JSON, WebAssembly and TypeScript fields.
 - SSCC/GTIN identifier builders and check-digit validation helpers.
 
 ## [0.1.0] - 2026-09-22
