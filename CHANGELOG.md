@@ -7,6 +7,10 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Typed `Barcode` accessors and matching CLI JSON, WebAssembly and TypeScript fields.
+
 ### Changed
 
 - Corrected strict AI association rules to match the GS1 Syntax Dictionary.
