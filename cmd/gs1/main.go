@@ -198,7 +198,6 @@ func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parse
 	warnings := b.Warnings()
 	out := parseOutput{
 		Raw:               b.Raw,
-		Elements:          make([]element, 0, len(b.Elements)),
 		ContentGTIN:       b.ContentGTIN(),
 		CountOfTradeItems: b.CountOfTradeItems(),
 		GLN:               b.GLN(),
@@ -216,6 +215,16 @@ func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parse
 			out.PackagingDate = ""
 		}
 	}
+	out.Elements = buildElements(b, opts)
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(out)
+	}
+	return writeTextOutput(stdout, out.Elements)
+}
+
+// buildElements converts parsed elements into their output representation.
+func buildElements(b *gs1.Barcode, opts parseOptions) []element {
+	elements := make([]element, 0, len(b.Elements))
 	for _, e := range b.Elements {
 		el := element{AI: e.AI, Value: e.Value}
 		if ai, ok := gs1.LookupAI(e.AI); ok {
@@ -226,12 +235,14 @@ func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parse
 				el.Date = t.Format("2006-01-02")
 			}
 		}
-		out.Elements = append(out.Elements, el)
+		elements = append(elements, el)
 	}
-	if opts.json {
-		return json.NewEncoder(stdout).Encode(out)
-	}
-	for _, el := range out.Elements {
+	return elements
+}
+
+// writeTextOutput renders elements in the human-readable text format.
+func writeTextOutput(stdout io.Writer, elements []element) error {
+	for _, el := range elements {
 		v := el.Value
 		if el.Date != "" {
 			v = el.Date
