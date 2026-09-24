@@ -96,7 +96,7 @@ type parseOutput struct {
 	GSIN              string    `json:"gsin,omitempty"`
 	PackagingDate     string    `json:"packagingDate,omitempty"`
 	Error             string    `json:"error,omitempty"`
-	Symbology string    `json:"symbology"`
+	Symbology         string    `json:"symbology"`
 }
 
 type parseOptions struct {
