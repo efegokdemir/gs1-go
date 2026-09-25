@@ -44,6 +44,18 @@ func (b Barcode) SSCC() string {
 	return v
 }
 
+// GDTI returns the document type identifier (AI 253), or "" if absent.
+func (b Barcode) GDTI() string {
+	v, _ := b.Get("253")
+	return v
+}
+
+// GRAI returns the returnable asset identifier (AI 8003), or "" if absent.
+func (b Barcode) GRAI() string {
+	v, _ := b.Get("8003")
+	return v
+}
+
 // Count returns the item count (AI 30), or "" if not present.
 func (b Barcode) Count() string {
 	v, _ := b.Get("30")
@@ -260,12 +272,36 @@ func validateData(value string, spec aiSpec) error {
 		}
 		return nil
 	}
+	if err := validateNumericPrefix(value, spec); err != nil {
+		return err
+	}
 	if spec.DataType != dataNumeric {
 		return nil
 	}
 	for i := 0; i < len(value); i++ {
 		if value[i] < '0' || value[i] > '9' {
 			return fmt.Errorf("%w: AI (%s) expects numeric data, got %q",
+				ErrInvalidData, spec.AI, value)
+		}
+	}
+	return nil
+}
+
+func validateNumericPrefix(value string, spec aiSpec) error {
+	if spec.NumericPrefixLen == 0 {
+		return nil
+	}
+	if len(value) < spec.NumericPrefixLen {
+		return fmt.Errorf("%w: AI (%s) needs at least %d characters, got %d",
+			ErrInvalidData, spec.AI, spec.NumericPrefixLen, len(value))
+	}
+	if spec.FirstChar != 0 && value[0] != spec.FirstChar {
+		return fmt.Errorf("%w: AI (%s) must start with %q, got %q",
+			ErrInvalidData, spec.AI, spec.FirstChar, value[0])
+	}
+	for i := 0; i < spec.NumericPrefixLen; i++ {
+		if value[i] < '0' || value[i] > '9' {
+			return fmt.Errorf("%w: AI (%s) expects a numeric prefix, got %q",
 				ErrInvalidData, spec.AI, value)
 		}
 	}
@@ -341,6 +377,7 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 	mid := (from + to) / 2
 	bestPos := -1
 	bestDist := len(data)
+	bestAILen := 0
 	for i := from; i < to; i++ {
 		spec, aiLen, ok := lookupAIAt(data, i)
 		if !ok {
@@ -356,9 +393,13 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 		if dist < 0 {
 			dist = -dist
 		}
-		if bestPos < 0 || dist < bestDist || (dist == bestDist && i > bestPos) {
+		preferShortAI := aiLen == 2 && bestAILen > 2
+		preferCandidate := bestAILen == 0 || preferShortAI ||
+			(aiLen == bestAILen && (dist < bestDist || (dist == bestDist && i > bestPos)))
+		if preferCandidate {
 			bestPos = i
 			bestDist = dist
+			bestAILen = aiLen
 		}
 	}
 	if bestPos >= 0 {
@@ -369,6 +410,9 @@ func findAIBoundary(data string, from, to int) (int, bool) {
 
 // plausibleAIData checks whether the data after a candidate AI looks valid.
 func plausibleAIData(data string, dataStart int, spec aiSpec) bool {
+	if !validAIDataPrefix(data, dataStart, spec) {
+		return false
+	}
 	if spec.FixedLen > 0 {
 		if dataStart+spec.FixedLen > len(data) {
 			return false
@@ -400,6 +444,9 @@ func canParseFrom(data string, pos int) bool {
 			return false
 		}
 		pos += aiLen
+		if !validAIDataPrefix(data, pos, spec) {
+			return false
+		}
 		if spec.FixedLen > 0 {
 			if !validFixedField(data, pos, spec) {
 				return false
@@ -420,6 +467,20 @@ func canParseFrom(data string, pos int) bool {
 		}
 	}
 	return true
+}
+
+func validAIDataPrefix(data string, dataStart int, spec aiSpec) bool {
+	if spec.NumericPrefixLen > 0 {
+		if dataStart+spec.NumericPrefixLen > len(data) {
+			return false
+		}
+		for i := dataStart; i < dataStart+spec.NumericPrefixLen; i++ {
+			if data[i] < '0' || data[i] > '9' {
+				return false
+			}
+		}
+	}
+	return spec.FirstChar == 0 || (dataStart < len(data) && data[dataStart] == spec.FirstChar)
 }
 
 func validFixedField(data string, pos int, spec aiSpec) bool {
