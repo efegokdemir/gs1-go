@@ -97,6 +97,48 @@ func TestParse(t *testing.T) {
 			wantCount: 1,
 			wantAIs:   []string{"240"},
 		},
+		{
+			name:      "GDTI",
+			input:     "2531234567890123DOC",
+			wantCount: 1,
+			wantAIs:   []string{"253"},
+		},
+		{
+			name:      "GINC",
+			input:     "401GINC123",
+			wantCount: 1,
+			wantAIs:   []string{"401"},
+		},
+		{
+			name:      "GRAI with serial",
+			input:     "800301234567890123SERIAL",
+			wantCount: 1,
+			wantAIs:   []string{"8003"},
+		},
+		{
+			name:      "GRAI without serial",
+			input:     "800301234567890123",
+			wantCount: 1,
+			wantAIs:   []string{"8003"},
+		},
+		{
+			name:      "GIAI",
+			input:     "8004ASSET123",
+			wantCount: 1,
+			wantAIs:   []string{"8004"},
+		},
+		{
+			name:      "GSRN provider",
+			input:     "8017123456789012345678",
+			wantCount: 1,
+			wantAIs:   []string{"8017"},
+		},
+		{
+			name:      "GSRN recipient",
+			input:     "8018123456789012345678",
+			wantCount: 1,
+			wantAIs:   []string{"8018"},
+		},
 		// 4-digit AI (weight)
 		{
 			name:      "AI 3102 net weight kg",
@@ -294,6 +336,16 @@ func TestParse(t *testing.T) {
 			wantErr: ErrInvalidData,
 		},
 		{
+			name:    "GRAI must start with zero",
+			input:   "80031234567890123X",
+			wantErr: ErrInvalidData,
+		},
+		{
+			name:    "GDTI numeric prefix is required",
+			input:   "253123456789012X",
+			wantErr: ErrInvalidData,
+		},
+		{
 			name:    "variable data exceeds max",
 			input:   "10AAAAABBBBBCCCCCDDDDDE",
 			wantErr: ErrInvalidData,
@@ -413,6 +465,21 @@ func TestEightDigitInputsStillUseAIParsing(t *testing.T) {
 	}
 }
 
+func TestMissingFNC1RecoveryKeepsTwoDigitBoundary(t *testing.T) {
+	for _, input := range []string{
+		"10PO401ABCDEFGHIJKLMN21SERIAL",
+		"10L2401ABCDEFGHIJKLMN21SERIAL",
+	} {
+		b, err := Parse(input)
+		if err != nil {
+			t.Fatalf("Parse(%q) error = %v", input, err)
+		}
+		if got := b.Elements; len(got) != 2 || got[0].AI != "10" || got[1].AI != "21" {
+			t.Errorf("Parse(%q) elements = %+v, want AI 10 followed by AI 21", input, got)
+		}
+	}
+}
+
 func TestParseConvenienceMethods(t *testing.T) {
 	input := "0104150000021126" + "17250630" + "2112345ABC\x1D" + "10LOT42X"
 	b, err := Parse(input)
@@ -498,6 +565,32 @@ func TestParseConvenienceMethodsMissing(t *testing.T) {
 	_, err = b.PackagingDate()
 	if !errors.Is(err, ErrInvalidData) {
 		t.Errorf("PackagingDate() error = %v, want ErrInvalidData", err)
+	}
+}
+
+func TestIdentifierConvenienceMethods(t *testing.T) {
+	b, err := Parse("2531234567890123DOC\x1D800301234567890123SERIAL")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := b.GDTI(); got != "1234567890123DOC" {
+		t.Errorf("GDTI() = %q, want %q", got, "1234567890123DOC")
+	}
+	if got := b.GRAI(); got != "01234567890123SERIAL" {
+		t.Errorf("GRAI() = %q, want %q", got, "01234567890123SERIAL")
+	}
+}
+
+func TestMissingFNC1DoesNotTreatEmbeddedTextAsMixedIdentifier(t *testing.T) {
+	b, err := Parse("10LOT253ABCDEFGHIJKLM21SERIAL")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := b.Lot(); got != "LOT253ABCDEFGHIJKLM" {
+		t.Errorf("Lot() = %q, want LOT253ABCDEFGHIJKLM", got)
+	}
+	if got := b.SerialNumber(); got != "SERIAL" {
+		t.Errorf("SerialNumber() = %q, want SERIAL", got)
 	}
 }
 
