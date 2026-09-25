@@ -152,6 +152,18 @@ caseGTIN, _ := gs1.NewGTIN14('1', gtin13)
 to recover the SSCC components. Allocation counters and persistence remain
 the application's responsibility.
 
+### Association rules
+
+`Parse` remains lenient for scanner workflows. Use `Barcode.Validate()` or
+`ParseWithOptions` with `ValidateAssociations: true` to enforce required pairs
+and exclusions such as `(02)` with `(37)`, weights with a GTIN, and mutually
+exclusive identifier variants.
+
+The strict association rules currently cover: AI 01 excluding 02 and 37; AI
+02 requiring 37; AI 37 requiring AI 00 with 02 or 8026; AI 21 requiring 01,
+03, or 8006; net weight requiring 01 or 02; gross weight requiring 00 or 01;
+one decimal variant per measure prefix; and AI 8017 excluding 8018.
+
 ### Dates
 
 GS1 dates are `YYMMDD` with years mapped to 2000–2099. A day of `00` denotes
@@ -301,6 +313,10 @@ barcodes, verify print quality, resolve GS1 Digital Link URIs, or implement
 business documents such as dispatch advices. See
 [ADR 0002](docs/adr/0002-parser-scope.md) for the reasoning and the GS1
 resources that cover those areas.
+
+For guidance on connecting scanner transports, storing parsed fields, and
+mapping records into dispatch advice workflows, see the
+[integration guide](docs/integration-guide.md).
 
 ## Related GS1 resources
 

@@ -44,6 +44,8 @@ export interface GS1ParseError {
 
 /** Options for gs1.parse(). */
 export interface GS1ParseOptions {
+  /** Validate Application Identifier association rules. */
+  strict?: boolean;
   /**
    * Date output format.
    * - "raw" (default): YYMMDD string as-is from the barcode
