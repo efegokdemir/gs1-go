@@ -10,6 +10,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 ### Added
 
 - Typed `Barcode` accessors and matching CLI JSON, WebAssembly and TypeScript fields.
+- SSCC/GTIN identifier builders and check-digit validation helpers.
 - `Measure` and typed barcode measurement accessors for net and gross weight.
 - Measurement data in CLI JSON output.
 
