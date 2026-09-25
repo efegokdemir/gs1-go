@@ -75,7 +75,7 @@ go install github.com/galenzo17/gs1-go/cmd/gs1@latest
 elements in scan order and offers typed accessors for the common healthcare AIs.
 
 ```go
-b, err := gs1.Parse("(01)04150000021126(17)250630(10)ABC123")
+b, err := gs1.Parse("(01)04150000021126(3102)001234(17)250630(10)ABC123")
 if err != nil {
     log.Fatal(err)
 }
