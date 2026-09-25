@@ -1,8 +1,10 @@
 package gs1_test
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/galenzo17/gs1-go"
 )
@@ -56,6 +58,20 @@ func ExampleParseInto() {
 	// Output:
 	// 04150000021126 12345
 	// 04150000021126 LOT2
+}
+
+func ExampleParseInto_scannerLoop() {
+	scanner := bufio.NewScanner(strings.NewReader("01041500000211261725063010LOT1\n"))
+	var barcode gs1.Barcode
+	for scanner.Scan() {
+		barcode.Reset()
+		if err := gs1.ParseInto(scanner.Text(), &barcode); err != nil {
+			continue
+		}
+		fmt.Println(barcode.GTIN(), barcode.Lot())
+	}
+	// Output:
+	// 04150000021126 LOT1
 }
 
 func ExampleValidateGTIN() {
