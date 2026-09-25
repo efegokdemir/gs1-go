@@ -139,6 +139,21 @@ check, _ := gs1.ComputeGTINCheckDigit("0415000002112") // '6'
 upca, _ := gs1.ExpandUPCE("012345")                    // 12-digit UPC-A
 ```
 
+Applications that allocate their own logistics identifiers can build the
+numeric keys without implementing the check-digit algorithm themselves:
+
+```go
+sscc, _ := gs1.NewSSCC('3', "7801234", "000000009")
+gtin13, _ := gs1.NewGTIN13("7801234", "00005")
+caseGTIN, _ := gs1.NewGTIN14('1', gtin13)
+// sscc:     378012340000000095
+// caseGTIN: 17801234000053
+```
+
+`SplitSSCC` accepts the known company-prefix length when an application needs
+to recover the SSCC components. Allocation counters and persistence remain
+the application's responsibility.
+
 ### Dates
 
 GS1 dates are `YYMMDD` with years mapped to 2000–2099. A day of `00` denotes
