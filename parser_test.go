@@ -524,6 +524,43 @@ func TestDueDateWarning(t *testing.T) {
 	}
 }
 
+func TestBareGTINWithKnownAIPrefix(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"UPC-A", "123456789012", "00123456789012"},
+		{"EAN-13", "1234567890128", "01234567890128"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := Parse(tt.input)
+			if err != nil {
+				t.Fatalf("Parse() error = %v", err)
+			}
+			if len(b.Elements) != 1 || b.Elements[0].AI != "01" || b.Elements[0].Value != tt.want {
+				t.Fatalf("Parse() elements = %+v, want AI 01 value %q", b.Elements, tt.want)
+			}
+			if got := b.Warnings(); len(got) != 0 {
+				t.Fatalf("Parse() warnings = %+v, want none", got)
+			}
+
+			var reused Barcode
+			if err := ParseInto(tt.input, &reused); err != nil {
+				t.Fatalf("ParseInto() error = %v", err)
+			}
+			if len(reused.Elements) != 1 || reused.Elements[0].AI != "01" || reused.Elements[0].Value != tt.want {
+				t.Fatalf("ParseInto() elements = %+v, want AI 01 value %q", reused.Elements, tt.want)
+			}
+			if got := reused.Warnings(); len(got) != 0 {
+				t.Fatalf("ParseInto() warnings = %+v, want none", got)
+			}
+		})
+	}
+}
+
 func TestDueDateWithExpirationHasNoWarning(t *testing.T) {
 	b, err := Parse("1225063017250630")
 	if err != nil {

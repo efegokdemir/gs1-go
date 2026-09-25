@@ -394,10 +394,14 @@ func isBareGTIN(data string) bool {
 			return false
 		}
 	}
-	// If the first 2 digits match a known AI, treat as AI-prefixed data.
+	// Prefer a valid bare GTIN when all-numeric input has a length that can be
+	// a standalone GTIN. Without an FNC1 separator, this preserves the
+	// established interpretation for product codes whose first two digits are
+	// also known AIs (for example, AI 12). A genuinely AI-prefixed value such as
+	// AI 12 with its six-digit date remains shorter than these GTIN lengths.
 	if n >= 2 {
 		if _, ok := aiTable[data[0:2]]; ok {
-			return false
+			return ValidateGTIN(data) == nil
 		}
 	}
 	return true
