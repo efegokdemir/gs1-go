@@ -11,11 +11,14 @@ const (
 
 // aiSpec describes the format of a single GS1 Application Identifier.
 type aiSpec struct {
-	AI       string   // AI code, e.g. "01", "10", "3100"
-	Name     string   // human-readable name
-	FixedLen int      // data length for fixed-length AIs; 0 means variable
-	MaxLen   int      // max data length (equals FixedLen for fixed-length AIs)
-	DataType dataType // numeric or alphanumeric
+	AI               string   // AI code, e.g. "01", "10", "3100"
+	Name             string   // human-readable name
+	FixedLen         int      // data length for fixed-length AIs; 0 means variable
+	MaxLen           int      // max data length (equals FixedLen for fixed-length AIs)
+	DataType         dataType // numeric or alphanumeric
+	NumericPrefixLen int      // numeric prefix length for mixed-format fields
+	FirstChar        byte     // required first character for mixed-format fields
+	Format           string   // explicit lookup format for mixed-format fields
 }
 
 // aiTable maps AI codes to their specifications. The parser looks up 2-digit
@@ -48,6 +51,14 @@ var aiTable = map[string]aiSpec{
 	// Additional product identification
 	"240": {AI: "240", Name: "Additional Product ID", FixedLen: 0, MaxLen: 30, DataType: dataAlphanumeric},
 	"241": {AI: "241", Name: "Customer Part Number", FixedLen: 0, MaxLen: 30, DataType: dataAlphanumeric},
+
+	// Identification keys
+	"253":  {AI: "253", Name: "GDTI", FixedLen: 0, MaxLen: 30, DataType: dataAlphanumeric, NumericPrefixLen: 13, Format: "N13 + X..17"},
+	"401":  {AI: "401", Name: "GINC", FixedLen: 0, MaxLen: 30, DataType: dataAlphanumeric},
+	"8003": {AI: "8003", Name: "GRAI", FixedLen: 0, MaxLen: 30, DataType: dataAlphanumeric, NumericPrefixLen: 14, FirstChar: '0', Format: "N1 + N13 + X..16"},
+	"8004": {AI: "8004", Name: "GIAI", FixedLen: 0, MaxLen: 30, DataType: dataAlphanumeric},
+	"8017": {AI: "8017", Name: "GSRN – Provider", FixedLen: 18, MaxLen: 18, DataType: dataNumeric},
+	"8018": {AI: "8018", Name: "GSRN – Recipient", FixedLen: 18, MaxLen: 18, DataType: dataNumeric},
 
 	// Net weight, kg (310n — 4-digit AIs where n is decimal position)
 	"3100": {AI: "3100", Name: "Net Weight kg", FixedLen: 6, MaxLen: 6, DataType: dataNumeric},
@@ -166,6 +177,9 @@ func LookupAI(code string) (AI, bool) {
 func (s aiSpec) format() string {
 	if s.DataType == dataUIC {
 		return "N1 + X3"
+	}
+	if s.Format != "" {
+		return s.Format
 	}
 	prefix := "N"
 	if s.DataType == dataAlphanumeric {
