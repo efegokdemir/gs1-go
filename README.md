@@ -205,6 +205,8 @@ Formats use GS1 Syntax Dictionary notation: `N14` is exactly 14 digits,
 | 37 | Count of Trade Items | N..8 |
 | 240 | Additional Product ID | X..30 |
 | 241 | Customer Part Number | X..30 |
+| 253 | GDTI | N13 + X..17 |
+| 401 | GINC | X..30 |
 | 310n | Net Weight, kg | N6 |
 | 320n | Net Weight, lb | N6 |
 | 330n | Gross Weight, kg | N6 |
@@ -220,6 +222,10 @@ Formats use GS1 Syntax Dictionary notation: `N14` is exactly 14 digits,
 | 417 | Party GLN | N13 |
 | 254 | GLN extension component | X..20 |
 | 7040 | GS1 UIC with extension | N1 + X3 |
+| 8003 | GRAI | N1 + N13 + X..16 |
+| 8004 | GIAI | X..30 |
+| 8017 | GSRN – Provider | N18 |
+| 8018 | GSRN – Recipient | N18 |
 | 710–714 | NHRN (DE, FR, ES, BR, PT) | X..20 |
 | 90 | Internal | X..30 |
 | 91–99 | Internal | X..90 |
