@@ -10,6 +10,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 ### Added
 
 - Typed `Barcode` accessors and matching CLI JSON, WebAssembly and TypeScript fields.
+- SSCC/GTIN identifier builders and check-digit validation helpers.
 - Made unsupported carrier variants fail explicitly and exposed detected
   symbology names in CLI and WASM results.
 - Added AIM symbology carrier detection and support for EAN/UPC, ITF-14, and

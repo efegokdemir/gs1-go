@@ -52,6 +52,9 @@ func TestValidateGTIN(t *testing.T) {
 			}
 		})
 	}
+	if _, err := ComputeGTINCheckDigit("1234567890"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("ComputeGTINCheckDigit() error = %v, want ErrInvalidData", err)
+	}
 }
 
 func TestComputeGTINCheckDigit(t *testing.T) {
@@ -78,6 +81,53 @@ func TestComputeGTINCheckDigit(t *testing.T) {
 				t.Errorf("ComputeGTINCheckDigit(%q) = '%c', want '%c'", tt.partial, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestIdentifierBuilders(t *testing.T) {
+	if got, err := NewSSCC('1', "0614141", "123456789"); err != nil || got != "106141411234567897" {
+		t.Fatalf("NewSSCC() reference vector = %q, %v; want %q", got, err, "106141411234567897")
+	}
+
+	sscc, err := NewSSCC('3', "7801234", "000000009")
+	if err != nil {
+		t.Fatalf("NewSSCC() error = %v", err)
+	}
+	if sscc != "378012340000000095" {
+		t.Fatalf("NewSSCC() = %q, want %q", sscc, "378012340000000095")
+	}
+	if gotExt, gotPrefix, gotSerial, err := SplitSSCC(sscc, 7); err != nil || gotExt != '3' || gotPrefix != "7801234" || gotSerial != "000000009" {
+		t.Fatalf("SplitSSCC() = %q, %q, %q, %v", gotExt, gotPrefix, gotSerial, err)
+	}
+
+	gtin13, err := NewGTIN13("7801234", "00005")
+	if err != nil || gtin13 != "7801234000056" {
+		t.Fatalf("NewGTIN13() = %q, %v", gtin13, err)
+	}
+	gtin14, err := NewGTIN14('1', gtin13)
+	if err != nil || gtin14 != "17801234000053" {
+		t.Fatalf("NewGTIN14() = %q, %v", gtin14, err)
+	}
+}
+
+func TestIdentifierBuildersRejectInvalidInput(t *testing.T) {
+	if _, err := NewSSCC('x', "7801234", "000000009"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("NewSSCC() error = %v, want ErrInvalidData", err)
+	}
+	if _, err := NewSSCC('3', "7801234", "9"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("NewSSCC() short components error = %v, want ErrInvalidData", err)
+	}
+	if _, err := NewGTIN14('1', "1234567890123"); !errors.Is(err, ErrInvalidCheckDigit) {
+		t.Errorf("NewGTIN14() error = %v, want ErrInvalidCheckDigit", err)
+	}
+	if err := ValidateCheckDigit("378012340000000097"); !errors.Is(err, ErrInvalidCheckDigit) {
+		t.Errorf("ValidateCheckDigit() error = %v, want ErrInvalidCheckDigit", err)
+	}
+	if _, _, _, err := SplitSSCC("378012340000000095", 3); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("SplitSSCC() error = %v, want ErrInvalidData", err)
+	}
+	if _, err := NewGTIN14('1', "04150000021126"); !errors.Is(err, ErrInvalidData) {
+		t.Errorf("NewGTIN14() length error = %v, want ErrInvalidData", err)
 	}
 }
 
