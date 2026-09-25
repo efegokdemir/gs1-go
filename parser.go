@@ -69,12 +69,14 @@ type Barcode struct {
 	Symbology Symbology // detected carrier, when an AIM prefix was present
 }
 
-// ParseOptions controls ambiguous carrier handling. AssumeBareGTIN8 takes
-// precedence over AI interpretation for unprefixed eight-digit numeric input;
-// parsing does not validate the GTIN check digit.
+// ParseOptions controls ambiguous carrier handling and optional validation.
+// AssumeBareGTIN8 takes precedence over AI interpretation for unprefixed
+// eight-digit numeric input; parsing does not validate the GTIN check digit.
 type ParseOptions struct {
 	// AssumeBareGTIN8 treats an unprefixed eight-digit numeric input as GTIN-8.
 	AssumeBareGTIN8 bool
+	// ValidateAssociations enforces AI association rules after parsing.
+	ValidateAssociations bool
 }
 
 // GTIN returns the GTIN value (AI 01), or "" if not present.
@@ -205,10 +207,11 @@ func Parse(input string) (Barcode, error) {
 	return ParseWithOptions(input, ParseOptions{})
 }
 
-// ParseWithOptions parses a GS1 barcode with explicit ambiguity options.
-func ParseWithOptions(input string, options ParseOptions) (Barcode, error) {
+// ParseWithOptions parses a GS1 barcode with explicit ambiguity options and
+// optional AI association rules.
+func ParseWithOptions(input string, opts ParseOptions) (Barcode, error) {
 	b := Barcode{Elements: make([]Element, 0, 8)}
-	if err := ParseIntoWithOptions(input, &b, options); err != nil {
+	if err := ParseIntoWithOptions(input, &b, opts); err != nil {
 		return Barcode{}, err
 	}
 	return b, nil
@@ -222,8 +225,9 @@ func ParseInto(input string, b *Barcode) error {
 }
 
 // ParseIntoWithOptions parses into an existing Barcode with explicit
-// ambiguity options, reusing its allocated memory.
-func ParseIntoWithOptions(input string, b *Barcode, options ParseOptions) error {
+// ambiguity options and optional AI association validation, reusing its
+// allocated memory.
+func ParseIntoWithOptions(input string, b *Barcode, opts ParseOptions) error {
 	if strings.TrimSpace(input) == "" {
 		return ErrEmptyInput
 	}
@@ -233,7 +237,7 @@ func ParseIntoWithOptions(input string, b *Barcode, options ParseOptions) error 
 
 	b.Raw = input
 	// Detect bare GTIN (EAN-13, EAN-8, UPC-A, GTIN-14 without AI prefix).
-	if isBareGTIN(data, options.AssumeBareGTIN8) {
+	if isBareGTIN(data, opts.AssumeBareGTIN8) {
 		padded := padGTIN(data)
 		b.Elements = append(b.Elements, Element{AI: "01", Value: padded})
 		return nil
@@ -273,9 +277,16 @@ func ParseIntoWithOptions(input string, b *Barcode, options ParseOptions) error 
 	if len(b.Elements) == 0 {
 		return ErrEmptyInput
 	}
+	if opts.ValidateAssociations {
+		return b.ValidateAssociations()
+	}
 
 	return nil
 }
+
+// Validate is the umbrella for all semantic Application Identifier checks,
+// including association rules.
+func (b Barcode) Validate() error { return b.ValidateAssociations() }
 
 // skipPrefix skips leading FNC1 and AIM symbology identifiers.
 func skipPrefix(data string) (int, Symbology, byte) {

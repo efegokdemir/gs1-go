@@ -72,6 +72,16 @@ func TestParseInvalid(t *testing.T) {
 	}
 }
 
+func TestParseStrictAssociations(t *testing.T) {
+	code, _, errOut := exec(t, "", "parse", "-strict", "0204150000021126")
+	if code != 1 || !strings.Contains(errOut, "requires AI (37)") {
+		t.Errorf("strict association exit %d stderr %q", code, errOut)
+	}
+	if code, _, _ := exec(t, "", "parse", "-strict", "0001234567890123456702041500000211263720"); code != 0 {
+		t.Errorf("valid strict association exit %d, want 0", code)
+	}
+}
+
 func TestParseValidateRegulator(t *testing.T) {
 	full := "0104150000021126172506302112345ABC\x1D10LOT42X"
 	if code, _, _ := exec(t, "", "parse", "-validate", "anvisa", full); code != 0 {
