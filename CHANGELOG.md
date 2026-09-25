@@ -15,6 +15,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   `GRAI()` accessors.
 - Missing-FNC1 recovery coverage for mixed-format identification AIs.
 - Add dependency-free element string encoding and HRI formatting.
+- Element encoding validates 01/02 GTIN check digits; SSCC and GLN check
+  digit validation remains deferred.
 
 ## [0.1.0] - 2026-09-22
 

@@ -30,7 +30,9 @@
 // hot loops. Each goroutine must own its Barcode.
 //
 // Encode builds element strings for barcode generators, and Barcode.HRI
-// formats parsed elements for human-readable labels.
+// formats parsed elements for human-readable labels. Encode validates check
+// digits for AIs 01 and 02; SSCC and GLN check digit validation is not yet
+// provided.
 //
 // # Validation
 //

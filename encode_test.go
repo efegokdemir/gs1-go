@@ -44,6 +44,8 @@ func TestEncodeErrors(t *testing.T) {
 		{name: "non-numeric", elements: []Element{{AI: "01", Value: "0415000002112A"}}, wantErr: ErrInvalidData},
 		{name: "FNC1 in value", elements: []Element{{AI: "10", Value: "LOT\x1D42"}}, wantErr: ErrInvalidData},
 		{name: "control character", elements: []Element{{AI: "10", Value: "LOT\x001"}}, wantErr: ErrInvalidData},
+		{name: "space-only value", elements: []Element{{AI: "21", Value: " "}}, wantErr: ErrInvalidData},
+		{name: "trailing space", elements: []Element{{AI: "10", Value: "LOT "}}, wantErr: ErrInvalidData},
 		{name: "parentheses", elements: []Element{{AI: "10", Value: "LOT(1)"}}, wantErr: ErrInvalidData},
 		{name: "duplicate AI", elements: []Element{{AI: "10", Value: "A"}, {AI: "10", Value: "B"}}, wantErr: ErrInvalidData},
 		{name: "empty value", elements: []Element{{AI: "10", Value: ""}}, wantErr: ErrInvalidData},
@@ -78,6 +80,14 @@ func TestEncodeLogisticLabel(t *testing.T) {
 	if len(parsed.Elements) != len(elements) {
 		t.Fatalf("Parse(Encode()) got %d elements, want %d", len(parsed.Elements), len(elements))
 	}
+	wantEncoded := "\x1D00106141411234567897020415000002112641406141411234523720\x1D10LOT42"
+	if encoded != wantEncoded {
+		t.Fatalf("Encode() = %q, want %q", encoded, wantEncoded)
+	}
+	wantHRI := "(00)106141411234567897(02)04150000021126(414)0614141123452(37)20(10)LOT42"
+	if parsed.HRI() != wantHRI {
+		t.Fatalf("Parse(Encode()) HRI = %q, want %q", parsed.HRI(), wantHRI)
+	}
 }
 
 func FuzzEncodeRoundTrip(f *testing.F) {
@@ -87,10 +97,8 @@ func FuzzEncodeRoundTrip(f *testing.F) {
 			t.Skip()
 		}
 		for _, value := range []string{lot, serial} {
-			for i := 0; i < len(value); i++ {
-				if value[i] < 0x20 || value[i] > 0x7e || value[i] == '(' || value[i] == ')' {
-					t.Skip()
-				}
+			if validateEncodableValue(value, "10") != nil {
+				t.Skip()
 			}
 		}
 		encoded, err := Encode([]Element{{AI: "10", Value: lot}, {AI: "21", Value: serial}})

@@ -9,6 +9,8 @@ import (
 // Encode builds a scanner-equivalent GS1 element string from AI elements.
 // Fixed-length elements are emitted first; variable-length elements are
 // separated by FNC1, with a leading FNC1 marking the GS1 payload.
+// Check digits are currently validated for AIs 01 and 02; SSCC and GLN check
+// digit validation is deferred until those identifiers have dedicated support.
 func Encode(elements []Element) (string, error) {
 	if len(elements) == 0 {
 		return "", ErrEmptyInput
@@ -72,7 +74,7 @@ func validateEncodeElement(element Element, index int, seen map[string]struct{})
 
 func validateEncodableValue(value, ai string) error {
 	for i := 0; i < len(value); i++ {
-		if value[i] < 0x20 || value[i] > 0x7e || value[i] == '(' || value[i] == ')' {
+		if value[i] <= 0x20 || value[i] > 0x7e || value[i] == '(' || value[i] == ')' {
 			return fmt.Errorf("%w: AI (%s) contains unsupported character at position %d", ErrInvalidData, ai, i)
 		}
 	}
