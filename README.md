@@ -85,6 +85,7 @@ for _, e := range b.Elements {
     fmt.Printf("(%s) %-16s %s\n", e.AI, ai.Name, e.Value)
 }
 // (01) GTIN             04150000021126
+// (3102) Net Weight kg    001234
 // (17) Expiration Date  250630
 // (10) Batch/Lot        ABC123
 
