@@ -18,6 +18,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   symbology names in CLI and WASM results.
 - Added AIM symbology carrier detection and support for EAN/UPC, ITF-14, and
   opt-in bare GTIN-8 parsing.
+- `Measure` and typed barcode measurement accessors for net and gross weight.
+- Measurement data in CLI JSON output.
 - `DueDate()` and `Warnings()` support, including due-date advisories in CLI
   and WASM JSON output.
 
