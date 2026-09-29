@@ -102,14 +102,15 @@ type measureOutput struct {
 }
 
 type parseOutput struct {
-	Raw               string    `json:"raw"`
-	Elements          []element `json:"elements"`
-	ContentGTIN       string    `json:"contentGtin,omitempty"`
-	CountOfTradeItems string    `json:"countOfTradeItems,omitempty"`
-	GLN               string    `json:"gln,omitempty"`
-	GSIN              string    `json:"gsin,omitempty"`
-	PackagingDate     string    `json:"packagingDate,omitempty"`
-	Error             string    `json:"error,omitempty"`
+	Raw               string        `json:"raw"`
+	Elements          []element     `json:"elements"`
+	ContentGTIN       string        `json:"contentGtin,omitempty"`
+	CountOfTradeItems string        `json:"countOfTradeItems,omitempty"`
+	GLN               string        `json:"gln,omitempty"`
+	GSIN              string        `json:"gsin,omitempty"`
+	PackagingDate     string        `json:"packagingDate,omitempty"`
+	Error             string        `json:"error,omitempty"`
+	Warnings          []gs1.Warning `json:"warnings,omitempty"`
 }
 
 type parseOptions struct {
@@ -132,7 +133,7 @@ func runParse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	var opts parseOptions
 	fs.BoolVar(&opts.json, "json", false, "emit one JSON object per barcode")
-	fs.BoolVar(&opts.iso, "iso", false, "render date AIs (11, 13, 15, 17) as ISO 8601")
+	fs.BoolVar(&opts.iso, "iso", false, "render date AIs (11, 12, 13, 15, 17) as ISO 8601")
 	fs.BoolVar(&opts.strict, "strict", false, "validate AI association rules")
 	fs.StringVar(&opts.validate, "validate", "", "check required AIs for a regulator: anvisa, anmat, snfa, cofepris")
 	if err := fs.Parse(args); err != nil {
@@ -152,7 +153,7 @@ func runParse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return parseStream(stdin, stdout, stderr, opts)
 	case 1:
 		var b gs1.Barcode
-		if err := parseOne(fs.Arg(0), &b, stdout, opts); err != nil {
+		if err := parseOne(fs.Arg(0), &b, stdout, stderr, opts); err != nil {
 			fmt.Fprintln(stderr, "gs1:", err)
 			return 1
 		}
@@ -181,7 +182,7 @@ func parseStream(stdin io.Reader, stdout, stderr io.Writer, opts parseOptions) i
 		}
 		first = false
 		b.Reset()
-		if err := parseOne(line, &b, stdout, opts); err != nil {
+		if err := parseOne(line, &b, stdout, stderr, opts); err != nil {
 			failed = true
 			if opts.json {
 				_ = json.NewEncoder(stdout).Encode(parseOutput{Raw: line, Error: err.Error()})
@@ -200,7 +201,7 @@ func parseStream(stdin io.Reader, stdout, stderr io.Writer, opts parseOptions) i
 	return 0
 }
 
-func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions) error {
+func parseOne(input string, b *gs1.Barcode, stdout, stderr io.Writer, opts parseOptions) error {
 	if err := gs1.ParseIntoWithOptions(input, b, gs1.ParseOptions{ValidateAssociations: opts.strict}); err != nil {
 		return err
 	}
@@ -210,6 +211,7 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 		}
 	}
 	packagingDate, _ := b.Get("13")
+	warnings := b.Warnings()
 	out := parseOutput{
 		Raw:               b.Raw,
 		ContentGTIN:       b.ContentGTIN(),
@@ -217,6 +219,10 @@ func parseOne(input string, b *gs1.Barcode, stdout io.Writer, opts parseOptions)
 		GLN:               b.GLN(),
 		GSIN:              b.GSIN(),
 		PackagingDate:     packagingDate,
+		Warnings:          warnings,
+	}
+	for _, warning := range warnings {
+		fmt.Fprintf(stderr, "gs1: warning: %s\n", warning.Message)
 	}
 	if opts.iso {
 		if t, err := b.PackagingDate(); err == nil {
@@ -286,7 +292,7 @@ func formatMeasure(measure measureOutput) string {
 
 func isDateAI(ai string) bool {
 	switch ai {
-	case "11", "13", "15", "17":
+	case "11", "12", "13", "15", "17":
 		return true
 	}
 	return false
