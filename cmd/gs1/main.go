@@ -86,10 +86,19 @@ Regulators for -validate: anvisa, anmat, snfa, cofepris
 
 // element is the JSON shape for one AI/value pair.
 type element struct {
-	AI    string `json:"ai"`
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value"`
-	Date  string `json:"date,omitempty"`
+	AI      string         `json:"ai"`
+	Name    string         `json:"name,omitempty"`
+	Value   string         `json:"value"`
+	Date    string         `json:"date,omitempty"`
+	Measure *measureOutput `json:"measure,omitempty"`
+}
+
+type measureOutput struct {
+	Raw      string  `json:"raw"`
+	Value    float64 `json:"value"`
+	Scaled   int64   `json:"scaled"`
+	Decimals int     `json:"decimals"`
+	Unit     string  `json:"unit"`
 }
 
 type parseOutput struct {
@@ -237,6 +246,12 @@ func buildElements(b *gs1.Barcode, opts parseOptions) []element {
 		if ai, ok := gs1.LookupAI(e.AI); ok {
 			el.Name = ai.Name
 		}
+		if measure, ok := measureForAI(e.AI, e.Value); ok {
+			el.Measure = &measureOutput{
+				Raw: measure.Raw, Value: measure.Value, Scaled: measure.Scaled,
+				Decimals: measure.Decimals, Unit: measure.Unit,
+			}
+		}
 		if opts.iso && isDateAI(e.AI) {
 			if t, err := gs1.ParseDate(e.Value); err == nil {
 				el.Date = t.Format("2006-01-02")
@@ -253,12 +268,26 @@ func writeTextOutput(stdout io.Writer, elements []element) error {
 		v := el.Value
 		if el.Date != "" {
 			v = el.Date
+		} else if el.Measure != nil {
+			v = formatMeasure(*el.Measure)
 		}
 		if _, err := fmt.Fprintf(stdout, "(%s) %-20s %s\n", el.AI, v, el.Name); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func measureForAI(ai, value string) (gs1.Measure, bool) {
+	if len(ai) != 4 {
+		return gs1.Measure{}, false
+	}
+	b := gs1.Barcode{Elements: []gs1.Element{{AI: ai, Value: value}}}
+	return b.Measure(ai[:3])
+}
+
+func formatMeasure(measure measureOutput) string {
+	return fmt.Sprintf("%.*f %s", measure.Decimals, measure.Value, measure.Unit)
 }
 
 func isDateAI(ai string) bool {
